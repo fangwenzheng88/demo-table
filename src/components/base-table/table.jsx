@@ -21,6 +21,16 @@ export default {
       type: Array,
       required: true,
     },
+    customTr: {
+      type: Function,
+      required: false,
+      default: () => null,
+    },
+    colspan: {
+      type: Function,
+      required: false,
+      default: () => 1,
+    },
   },
   data() {
     return {
@@ -113,14 +123,18 @@ export default {
         }
       });
       this.columnWidths = this.columns.map((col) => {
-        let calcColumnWidth = col.width;
-        if (totalWidth < width) {
-          if (calcColumnWidth === undefined) {
-            calcColumnWidth = (width - totalWidth) / autoWidthColumnTotal;
+        let calcColumnWidth = 0;
+        if (col.width === undefined) {
+          if (totalWidth < width) {
+            calcColumnWidth = Math.max((width - totalWidth) / autoWidthColumnTotal, 80);
+          } else {
+            calcColumnWidth = 80;
           }
-          if (width - totalWidth > 0) {
-            calcColumnWidth += (calcColumnWidth / totalWidth) * (width - totalWidth);
-          }
+        } else {
+          calcColumnWidth = col.width;
+        }
+        if (autoWidthColumnTotal === 0 && totalWidth < width) {
+          calcColumnWidth += (calcColumnWidth / totalWidth) * (width - totalWidth);
         }
         return {
           dataIndex: col.dataIndex,
@@ -156,15 +170,17 @@ export default {
       this.columnWidths.forEach((col) => {
         let calcColumnWidth = 0;
         if (!col.resized) {
-          if (totalWidth < width) {
-            if (col.originWidth === undefined) {
-              calcColumnWidth = (width - totalWidth) / autoWidthColumnTotal;
+          if (col.originWidth === undefined) {
+            if (totalWidth < width) {
+              calcColumnWidth = Math.max((width - totalWidth) / autoWidthColumnTotal, 80);
             } else {
-              calcColumnWidth = col.originWidth;
+              calcColumnWidth = 80;
             }
-            if (width - totalWidth > 0) {
-              calcColumnWidth += (calcColumnWidth / autoWdith) * (width - totalWidth);
-            }
+          } else {
+            calcColumnWidth = col.originWidth;
+          }
+          if (autoWidthColumnTotal === 0 && totalWidth < width) {
+            calcColumnWidth += (calcColumnWidth / autoWdith) * (width - totalWidth);
           }
         } else {
           calcColumnWidth = col.width;
@@ -190,6 +206,9 @@ export default {
               } else {
                 this.isScrollX = false;
               }
+
+              this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
+              this.isScrollToLeft = el.scrollLeft === 0;
             });
           }
         })
@@ -286,6 +305,65 @@ export default {
       }
       return flag;
     },
+    renderTbody() {
+      return this.data.map((record, rowIndex) => {
+        return this.renderTr(record, rowIndex);
+      });
+    },
+    renderTr(record, rowIndex) {
+      const tr = this.customTr(record, rowIndex);
+      if (typeof tr === 'string') {
+        return this.$scopedSlots[tr]({ record, rowIndex });
+      } else if (tr) {
+        return tr;
+      }
+
+      let colspan = 1;
+      return (
+        <tr class="base-table-tr" key={record[this.rowKey]}>
+          {this.columns.map((column, columnIndex) => {
+            if (colspan > 1) {
+              colspan -= 1;
+              return null;
+            } else {
+              colspan = this.colspan(record, rowIndex, column, columnIndex);
+              return this.renderTd(record, rowIndex, column, columnIndex, colspan);
+            }
+          })}
+        </tr>
+      );
+    },
+    renderTd(record, rowIndex, column, columnIndex, colspan) {
+      return (
+        <td
+          colspan={colspan}
+          class={[
+            {
+              'base-table-column-fixed': column.fixed,
+              'base-table-fixed-right-is-first': this.isFirstFixedRight(columnIndex),
+              'base-table-fixed-left-is-last': this.isLastFixedLeft(columnIndex),
+            },
+            'base-table-td',
+          ]}
+          style={this.getFixedStyle(column, columnIndex)}
+          key={column.dataIndex}
+        >
+          {this.renderCell(record, rowIndex, column, columnIndex)}
+        </td>
+      );
+    },
+    renderCell(record, rowIndex, column, columnIndex) {
+      if (this.$scopedSlots[column.dataIndex]) {
+        return this.$scopedSlots[column.dataIndex]({
+          record,
+          rowIndex,
+          column,
+          columnIndex,
+        });
+      } else {
+        return <div class="base-table-cell">{record[column.dataIndex]}</div>;
+      }
+    },
   },
   render() {
     const renderEmptBlock = () => {
@@ -373,32 +451,7 @@ export default {
                 );
               })}
             </colgroup>
-            <tbody class="base-table-body">
-              {this.data.map((record) => {
-                return (
-                  <tr class="base-table-tr" key={record[this.rowKey]}>
-                    {this.columns.map((column, index) => {
-                      return (
-                        <td
-                          class={[
-                            {
-                              'base-table-column-fixed': column.fixed,
-                              'base-table-fixed-right-is-first': this.isFirstFixedRight(index),
-                              'base-table-fixed-left-is-last': this.isLastFixedLeft(index),
-                            },
-                            'base-table-td',
-                          ]}
-                          style={this.getFixedStyle(column, index)}
-                          key={column.dataIndex}
-                        >
-                          <div class="base-table-cell">{record[column.dataIndex]}</div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
+            <tbody class="base-table-body">{this.renderTbody()}</tbody>
           </table>
           {renderEmptBlock()}
         </div>
