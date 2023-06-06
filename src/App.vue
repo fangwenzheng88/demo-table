@@ -1,13 +1,25 @@
 <template>
   <div id="app">
-    <base-table max-height="900px" row-key="key" :columns="columns" :data="tableData" :custom-tr="renderTr" :colspan="colspanMethods">
+    <base-table
+      max-height="700px"
+      row-key="key"
+      :columns="columns"
+      :data="tableData"
+      :custom-tr="renderTr"
+      :span-method="spanMethod"
+      :allow-drag-method="allowDragMethod"
+      :allow-drop-method="allowDropMethod"
+      :onDrop="onDrop"
+    >
       <template #name="{ record, column, rowIndex }">
         <span>{{ rowIndex }}</span>
         <a>{{ record[column.dataIndex] }}</a>
       </template>
       <template #header-tr="{ record }">
         <tr class="base-table-tr">
-          <td class="base-table-td" :colspan="columns.length">{{ record.name }}</td>
+          <td class="base-table-td" :colspan="columns.length">
+            <div class="base-table-cell">{{ record.name }}</div>
+          </td>
         </tr>
       </template>
     </base-table>
@@ -31,7 +43,8 @@ export default {
         {
           title: 'Name',
           dataIndex: 'name',
-          width: 600,
+          type: 'sort',
+          width: 200,
         },
         {
           title: 'Salary',
@@ -51,12 +64,15 @@ export default {
         {
           title: 'Email',
           dataIndex: 'email',
-          width: 100,
+          width: 300,
         },
       ],
       tableData: [],
       key: 0,
     };
+  },
+  mounted() {
+    this.onAdd();
   },
   methods: {
     /* renderTr(record, rowIndex) {
@@ -72,12 +88,13 @@ export default {
         return null;
       }
     }, */
-    colspanMethods(record, rowIndex, column, columnIndex) {
-      console.log(record, rowIndex, column, columnIndex);
-      if (column.dataIndex === 'name') {
-        return 2;
-      } else {
-        return 1;
+    // eslint-disable-next-line no-unused-vars
+    spanMethod({ record, rowIndex, column, columnIndex }) {
+      if (rowIndex === 1 && columnIndex === 0) {
+        return {
+          rowspan: 2,
+          colspan: 2,
+        };
       }
     },
     renderTr(record, rowIndex) {
@@ -87,11 +104,26 @@ export default {
         return null;
       }
     },
+    allowDragMethod({ rowIndex }) {
+      if (rowIndex === 1) {
+        return false;
+      }
+    },
+    allowDropMethod({ rowIndex }) {
+      if (rowIndex === 1) {
+        return false;
+      }
+    },
+    onDrop(data) {
+      console.log('onDrop', data);
+      [this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
+    },
     onAdd() {
       for (let i = 0; i < 5; i++) {
+        this.key += 1;
         this.tableData.push({
-          key: this.key++,
-          name: 'Jane Doe' + this.key++,
+          key: this.key,
+          name: 'Jane Doe' + this.key,
           salary: 23000,
           address: '32 Park Road, London',
           email: 'jane.doe@example.com',

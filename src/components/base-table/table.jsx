@@ -1,5 +1,5 @@
 import { getScrollbarWidth, debounce } from './utils';
-
+import useDrag from './drag.js';
 export default {
   name: 'BaseTable',
   props: {
@@ -26,14 +26,35 @@ export default {
       required: false,
       default: () => null,
     },
-    colspan: {
+    spanMethod: {
       type: Function,
       required: false,
-      default: () => 1,
+      default: () => {
+        return { rowspan: 1, colspan: 1 };
+      },
+    },
+    allowDragMethod: {
+      type: Function,
+      required: false,
+      default: () => true,
+    },
+    allowDropMethod: {
+      type: Function,
+      required: false,
+      default: () => true,
+    },
+    onDrop: {
+      type: Function,
+      required: false,
+      default: () => {},
     },
   },
   data() {
+    const drag = useDrag({
+      onDrop: this.onDrop,
+    });
     return {
+      drag,
       rootWidth: 0,
       columnWidths: [],
       scrollBarWidth: 15,
@@ -68,11 +89,56 @@ export default {
       return tableWidth;
     },
     hasGutter() {
-      if (this.rootWidth - this.tableWidth > this.scrollBarWidth) {
+      if (this.rootWidth - this.tableWidth > this.scrollBarWidth + 1) {
         return false;
       } else {
         return true;
       }
+    },
+    sortedData() {
+      const data = [...this.data];
+      if (this.drag.dragging && this.drag.targetKey) {
+        [data[this.drag.sourceIndex], data[this.drag.targetIndex]] = [data[this.drag.targetIndex], data[this.drag.sourceIndex]];
+      }
+      return data;
+    },
+    tableSpan() {
+      const span = {};
+      if (this.spanMethod) {
+        this.data.forEach((record, rowIndex) => {
+          this.columns.forEach((column, columnIndex) => {
+            const { rowspan = 1, colspan = 1 } =
+              this.spanMethod?.({
+                record: record.raw,
+                column,
+                rowIndex,
+                columnIndex,
+              }) ?? {};
+            if (rowspan > 1 || colspan > 1) {
+              span[`${rowIndex}-${columnIndex}`] = [rowspan, colspan];
+            }
+          });
+        });
+      }
+
+      return span;
+    },
+    removedCells() {
+      const data = [];
+      for (const indexKey of Object.keys(this.tableSpan)) {
+        const indexArray = indexKey.split('-').map((item) => Number(item));
+        const span = this.tableSpan[indexKey];
+        for (let i = 1; i < span[0]; i++) {
+          data.push(`${indexArray[0] + i}-${indexArray[1]}`);
+          for (let j = 1; j < span[1]; j++) {
+            data.push(`${indexArray[0] + i}-${indexArray[1] + j}`);
+          }
+        }
+        for (let i = 1; i < span[1]; i++) {
+          data.push(`${indexArray[0]}-${indexArray[1] + i}`);
+        }
+      }
+      return data;
     },
   },
   mounted() {
@@ -306,7 +372,7 @@ export default {
       return flag;
     },
     renderTbody() {
-      return this.data.map((record, rowIndex) => {
+      return this.sortedData.map((record, rowIndex) => {
         return this.renderTr(record, rowIndex);
       });
     },
@@ -318,25 +384,104 @@ export default {
         return tr;
       }
 
-      let colspan = 1;
       return (
-        <tr class="base-table-tr" key={record[this.rowKey]}>
+        <tr class={['base-table-tr', { 'base-table-tr-drag': this.drag.sourceKey === record[this.rowKey] }]} key={record[this.rowKey]}>
           {this.columns.map((column, columnIndex) => {
-            if (colspan > 1) {
-              colspan -= 1;
-              return null;
-            } else {
-              colspan = this.colspan(record, rowIndex, column, columnIndex);
-              return this.renderTd(record, rowIndex, column, columnIndex, colspan);
-            }
+            return this.renderTd(record, rowIndex, column, columnIndex);
           })}
         </tr>
       );
     },
-    renderTd(record, rowIndex, column, columnIndex, colspan) {
+    renderSortTd(record, rowIndex, column, columnIndex) {
+      const allowDrag = this.allowDragMethod({ record, rowIndex, column, columnIndex }) ?? true;
+      const dragSourceEvent = {
+        draggable: allowDrag,
+        onDragstart: (ev) => {
+          if (!allowDrag) return;
+          this.drag.handleDragStart(ev, record[this.rowKey], rowIndex, record);
+        },
+        onDragend: (ev) => {
+          if (!allowDrag) return;
+          this.drag.handleDragEnd(ev);
+        },
+      };
+
+      const allowDrop = this.allowDropMethod({ record, rowIndex, column, columnIndex }) ?? true;
+      const dragTargetEvent = {
+        onDragenter: (ev) => {
+          if (!allowDrop) return;
+          this.drag.handleDragEnter(ev, record[this.rowKey], rowIndex);
+        },
+        onDragover: (ev) => {
+          if (!allowDrop) return;
+          this.drag.handleDragover(ev);
+        },
+        onDrop: (ev) => {
+          if (!allowDrop) return;
+          this.drag.handleDrop(ev);
+        },
+      };
+
+      const cellId = `${rowIndex}-${columnIndex}`;
+      const [rowspan, colspan] = this.tableSpan[cellId] ?? [1, 1];
+      if (this.removedCells.includes(cellId)) {
+        return null;
+      }
+
       return (
         <td
-          colspan={colspan}
+          rowSpan={rowspan}
+          colSpan={colspan}
+          class={[
+            {
+              'base-table-column-fixed': column.fixed,
+              'base-table-fixed-right-is-first': this.isFirstFixedRight(columnIndex),
+              'base-table-fixed-left-is-last': this.isLastFixedLeft(columnIndex),
+            },
+            'base-table-td',
+          ]}
+          style={this.getFixedStyle(column, columnIndex)}
+          key={column.dataIndex}
+          onDragenter={dragTargetEvent.onDragenter}
+          onDragover={dragTargetEvent.onDragover}
+          onDrop={dragTargetEvent.onDrop}
+        >
+          <div class="base-table-drag-td">
+            <div class="base-table-drag-handler" draggable={dragSourceEvent.draggable} onDragstart={dragSourceEvent.onDragstart} onDragend={dragSourceEvent.onDragend}>
+              <svg
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                stroke="currentColor"
+                class="arco-icon arco-icon-drag-dot-vertical"
+                stroke-width="4"
+                stroke-linecap="butt"
+                stroke-linejoin="miter"
+                width="14"
+                height="14"
+              >
+                <path d="M17 8h2v2h-2V8ZM17 23h2v2h-2v-2ZM17 38h2v2h-2v-2ZM29 8h2v2h-2V8ZM29 23h2v2h-2v-2ZM29 38h2v2h-2v-2Z" fill="currentColor" stroke="none"></path>
+                <path d="M17 8h2v2h-2V8ZM17 23h2v2h-2v-2ZM17 38h2v2h-2v-2ZM29 8h2v2h-2V8ZM29 23h2v2h-2v-2ZM29 38h2v2h-2v-2Z"></path>
+              </svg>
+            </div>
+            {this.renderCell(record, rowIndex, column, columnIndex)}
+          </div>
+        </td>
+      );
+    },
+    renderTd(record, rowIndex, column, columnIndex) {
+      if (column.type === 'sort') {
+        return this.renderSortTd(record, rowIndex, column, columnIndex);
+      }
+      const cellId = `${rowIndex}-${columnIndex}`;
+      const [rowspan, colspan] = this.tableSpan[cellId] ?? [1, 1];
+      if (this.removedCells.includes(cellId)) {
+        return null;
+      }
+      return (
+        <td
+          rowSpan={rowspan}
+          colSpan={colspan}
           class={[
             {
               'base-table-column-fixed': column.fixed,
@@ -348,7 +493,7 @@ export default {
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
         >
-          {this.renderCell(record, rowIndex, column, columnIndex)}
+          <div class="base-table-cell">{this.renderCell(record, rowIndex, column, columnIndex)}</div>
         </td>
       );
     },
@@ -361,7 +506,7 @@ export default {
           columnIndex,
         });
       } else {
-        return <div class="base-table-cell">{record[column.dataIndex]}</div>;
+        return <span>{record[column.dataIndex]}</span>;
       }
     },
   },
