@@ -1,5 +1,5 @@
 import { getScrollbarWidth, debounce } from './utils';
-import useDrag from './drag.js';
+import { useDrag, useHover } from './store.js';
 export default {
   name: 'BaseTable',
   props: {
@@ -50,11 +50,13 @@ export default {
     },
   },
   data() {
-    const drag = useDrag({
+    const dragStore = useDrag({
       onDrop: this.onDrop,
     });
+    const hoverStore = useHover();
     return {
-      drag,
+      dragStore,
+      hoverStore,
       rootWidth: 0,
       columnWidths: [],
       scrollBarWidth: 15,
@@ -97,8 +99,8 @@ export default {
     },
     sortedData() {
       const data = [...this.data];
-      if (this.drag.dragging && this.drag.targetKey) {
-        [data[this.drag.sourceIndex], data[this.drag.targetIndex]] = [data[this.drag.targetIndex], data[this.drag.sourceIndex]];
+      if (this.dragStore.dragging && this.dragStore.targetKey) {
+        [data[this.dragStore.sourceIndex], data[this.dragStore.targetIndex]] = [data[this.dragStore.targetIndex], data[this.dragStore.sourceIndex]];
       }
       return data;
     },
@@ -163,7 +165,10 @@ export default {
       const resizeObserver = new ResizeObserver(
         debounce((entries) => {
           const width = entries[0].contentRect.width;
-          this.rootWidth = width;
+          if (this.rootWidth != width) {
+            this.rootWidth = width;
+            this.setColumnsWidth();
+          }
         })
       );
       // 监听元素
@@ -384,8 +389,22 @@ export default {
         return tr;
       }
 
+      const hoverEvent = {
+        onMouseenter: (ev) => {
+          this.hoverStore.handleMouseenter(ev, record[this.rowKey]);
+        },
+        onMouseleave: (ev) => {
+          this.hoverStore.handleMouseleave(ev);
+        },
+      };
+
       return (
-        <tr class={['base-table-tr', { 'base-table-tr-drag': this.drag.sourceKey === record[this.rowKey] }]} key={record[this.rowKey]}>
+        <tr
+          class={['base-table__tr', { 'base-table__tr-hover': this.hoverStore.activeKey === record[this.rowKey], 'base-table__tr-drag': this.dragStore.sourceKey === record[this.rowKey] }]}
+          onMouseenter={hoverEvent.onMouseenter}
+          onMouseleave={hoverEvent.onMouseleave}
+          key={record[this.rowKey]}
+        >
           {this.columns.map((column, columnIndex) => {
             return this.renderTd(record, rowIndex, column, columnIndex);
           })}
@@ -393,32 +412,34 @@ export default {
       );
     },
     renderSortTd(record, rowIndex, column, columnIndex) {
-      const allowDrag = this.allowDragMethod({ record, rowIndex, column, columnIndex }) ?? true;
+      const allowDrag = this.allowDragMethod({ record, rowIndex }) ?? true;
       const dragSourceEvent = {
         draggable: allowDrag,
         onDragstart: (ev) => {
           if (!allowDrag) return;
-          this.drag.handleDragStart(ev, record[this.rowKey], rowIndex, record);
+          this.dragStore.handleDragStart(ev, record[this.rowKey], rowIndex, record);
         },
         onDragend: (ev) => {
           if (!allowDrag) return;
-          this.drag.handleDragEnd(ev);
+          this.dragStore.handleDragEnd(ev);
         },
       };
 
-      const allowDrop = this.allowDropMethod({ record, rowIndex, column, columnIndex }) ?? true;
       const dragTargetEvent = {
         onDragenter: (ev) => {
+          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
           if (!allowDrop) return;
-          this.drag.handleDragEnter(ev, record[this.rowKey], rowIndex);
+          this.dragStore.handleDragEnter(ev, record[this.rowKey], rowIndex);
         },
         onDragover: (ev) => {
+          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
           if (!allowDrop) return;
-          this.drag.handleDragover(ev);
+          this.dragStore.handleDragover(ev);
         },
         onDrop: (ev) => {
+          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
           if (!allowDrop) return;
-          this.drag.handleDrop(ev);
+          this.dragStore.handleDrop(ev);
         },
       };
 
@@ -434,11 +455,11 @@ export default {
           colSpan={colspan}
           class={[
             {
-              'base-table-column-fixed': column.fixed,
-              'base-table-fixed-right-is-first': this.isFirstFixedRight(columnIndex),
-              'base-table-fixed-left-is-last': this.isLastFixedLeft(columnIndex),
+              'base-table__column-fixed': column.fixed,
+              'base-table__fixed-right-is-first': this.isFirstFixedRight(columnIndex),
+              'base-table__fixed-left-is-last': this.isLastFixedLeft(columnIndex),
             },
-            'base-table-td',
+            'base-table__td',
           ]}
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
@@ -446,8 +467,13 @@ export default {
           onDragover={dragTargetEvent.onDragover}
           onDrop={dragTargetEvent.onDrop}
         >
-          <div class="base-table-drag-td">
-            <div class="base-table-drag-handler" draggable={dragSourceEvent.draggable} onDragstart={dragSourceEvent.onDragstart} onDragend={dragSourceEvent.onDragend}>
+          <div class="base-table__drag-td">
+            <div
+              class={['base-table__drag-handler', { 'base-table__drag-disabled': !dragSourceEvent.draggable }]}
+              draggable={dragSourceEvent.draggable}
+              onDragstart={dragSourceEvent.onDragstart}
+              onDragend={dragSourceEvent.onDragend}
+            >
               <svg
                 viewBox="0 0 48 48"
                 fill="none"
@@ -484,16 +510,16 @@ export default {
           colSpan={colspan}
           class={[
             {
-              'base-table-column-fixed': column.fixed,
-              'base-table-fixed-right-is-first': this.isFirstFixedRight(columnIndex),
-              'base-table-fixed-left-is-last': this.isLastFixedLeft(columnIndex),
+              'base-table__column-fixed': column.fixed,
+              'base-table__fixed-right-is-first': this.isFirstFixedRight(columnIndex),
+              'base-table__fixed-left-is-last': this.isLastFixedLeft(columnIndex),
             },
-            'base-table-td',
+            'base-table__td',
           ]}
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
         >
-          <div class="base-table-cell">{this.renderCell(record, rowIndex, column, columnIndex)}</div>
+          <div class="base-table__cell">{this.renderCell(record, rowIndex, column, columnIndex)}</div>
         </td>
       );
     },
@@ -515,24 +541,24 @@ export default {
       if (this.data && this.data.length > 0) {
         return null;
       }
-      return <div class="base-table-empty-block">暂无数据</div>;
+      return <div class="base-table__empty-block">暂无数据</div>;
     };
     return (
       <div
         class={[
           'base-table',
           {
-            'base-table-scroll-x': this.isScrollX,
-            'base-table-scroll-y': this.isScrollY,
-            'base-table-scroll': this.isScrollX || this.isScrollY,
-            'base-table-scroll-position-left': this.isScrollToLeft,
-            'base-table-scroll-position-right': this.isScrollToRight,
-            'base-table-scroll-position-middle': !this.isScrollToLeft && !this.isScrollToRight,
+            'base-table__scroll-x': this.isScrollX,
+            'base-table__scroll-y': this.isScrollY,
+            'base-table__scroll': this.isScrollX || this.isScrollY,
+            'base-table__scroll-position-left': this.isScrollToLeft,
+            'base-table__scroll-position-right': this.isScrollToRight,
+            'base-table__scroll-position-middle': !this.isScrollToLeft && !this.isScrollToRight,
           },
         ]}
       >
-        <div class="base-table-header-wrapper" ref="headerWrapEl">
-          <table class="base-table-element" cellpadding="0" cellspacing="0" style={{ width: `${this.tableWidth}px` }}>
+        <div class="base-table__header-wrapper" ref="headerWrapEl">
+          <table class="base-table__element" cellpadding="0" cellspacing="0" style={{ width: `${this.tableWidth}px` }}>
             <colgroup>
               {this.columnWidths.map((column) => {
                 return (
@@ -555,33 +581,33 @@ export default {
               ></col>
             </colgroup>
             <thead>
-              <tr class="base-table-tr">
+              <tr class="base-table__tr">
                 {this.columns.map((column, index) => {
                   return (
                     <th
                       class={[
                         {
-                          'base-table-thead-fixed': column.fixed,
-                          'base-table-fixed-right-is-first': this.isFirstFixedRight(index),
-                          'base-table-fixed-left-is-last': this.isLastFixedLeft(index),
+                          'base-table__thead-fixed': column.fixed,
+                          'base-table__fixed-right-is-first': this.isFirstFixedRight(index),
+                          'base-table__fixed-left-is-last': this.isLastFixedLeft(index),
                         },
-                        'base-table-th',
+                        'base-table__th',
                       ]}
                       style={this.getFixedStyle(column, index, 'th')}
                       key={column.dataIndex}
                     >
-                      <div class="base-table-cell">{column.title}</div>
-                      <div class="base-table-resize-handle" onMousedown={(e) => this.handleMouseDown(e, column, index)}></div>
+                      <div class="base-table__cell">{column.title}</div>
+                      <div class="base-table__resize-handle" onMousedown={(e) => this.handleMouseDown(e, column, index)}></div>
                     </th>
                   );
                 })}
-                {this.isScrollY && <th class="base-table-th base-table-gutter" style={{ width: `${this.scrollBarWidth}px`, visibility: this.hasGutter ? 'visible' : 'hidden' }}></th>}
+                {this.isScrollY && <th class="base-table__th base-table__gutter" style={{ width: `${this.scrollBarWidth}px`, visibility: this.hasGutter ? 'visible' : 'hidden' }}></th>}
               </tr>
             </thead>
           </table>
         </div>
-        <div ref="bodyWrapEl" class="base-table-body-wrapper" style={{ maxHeight: this.maxHeight ? this.maxHeight : 'unset' }} onScroll={this.onScroll}>
-          <table ref="tableBodyEl" class="base-table-element base-table-body" cellpadding="0" cellspacing="0" style={{ width: this.tableWidth ? `${this.tableWidth}px` : '100%' }}>
+        <div ref="bodyWrapEl" class="base-table__body-wrapper" style={{ maxHeight: this.maxHeight ? this.maxHeight : 'unset' }} onScroll={this.onScroll}>
+          <table ref="tableBodyEl" class="base-table__element base-table__body" cellpadding="0" cellspacing="0" style={{ width: this.tableWidth ? `${this.tableWidth}px` : '100%' }}>
             <colgroup>
               {this.columnWidths.map((column) => {
                 return (
@@ -596,12 +622,12 @@ export default {
                 );
               })}
             </colgroup>
-            <tbody class="base-table-body">{this.renderTbody()}</tbody>
+            <tbody class="base-table__body">{this.renderTbody()}</tbody>
           </table>
           {renderEmptBlock()}
         </div>
         <div
-          class="base-table-column-resize-proxy"
+          class="base-table__column-resize-proxy"
           style={{
             display: this.dragPoxy.visible ? 'block' : 'none',
             left: `${this.dragPoxy.left}px`,

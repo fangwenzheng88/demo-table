@@ -34,29 +34,29 @@
   }
 }
 
-.base-table-header-wrapper {
+.base-table__header-wrapper {
   overflow: hidden;
 }
 
-.base-table-body-wrapper {
+.base-table__body-wrapper {
   overflow: hidden;
 }
 
-.base-table-element {
+.base-table__element {
   width: 100%;
   font-size: 14px;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 
-  .base-table-th {
+  .base-table__th {
     position: relative;
     padding: 12px 16px;
     font-weight: bold;
     background-color: @header-color;
     color: @font-color-1;
     user-select: none;
-    .base-table-resize-handle {
+    .base-table__resize-handle {
       position: absolute;
       top: 0;
       right: -4px;
@@ -67,8 +67,8 @@
     }
   }
 
-  .base-table-th,
-  .base-table-td {
+  .base-table__th,
+  .base-table__td {
     border-right: 1px solid @border-color;
     border-bottom: 1px solid @border-color;
     text-align: left;
@@ -85,7 +85,7 @@
     }
   }
 
-  .base-table-cell {
+  .base-table__cell {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: normal;
@@ -93,24 +93,24 @@
     line-height: 23px;
   }
 
-  .base-table-td {
+  .base-table__td {
     padding: 12px 16px;
     color: @font-color-1;
-    background-color: #FFF;
+    background-color: #fff;
   }
 
-  .base-table-thead-fixed {
+  .base-table__thead-fixed {
     position: sticky !important;
     z-index: 101;
   }
 
-  .base-table-column-fixed {
+  .base-table__column-fixed {
     position: sticky !important;
     z-index: 20;
     background-color: #fff;
   }
 
-  .base-table-fixed-right-is-first::after {
+  .base-table__fixed-right-is-first::after {
     position: absolute;
     top: 0;
     bottom: -1px;
@@ -122,7 +122,7 @@
     content: '';
     pointer-events: none;
   }
-  .base-table-fixed-left-is-last::after {
+  .base-table__fixed-left-is-last::after {
     position: absolute;
     top: 0;
     bottom: -1px;
@@ -136,14 +136,14 @@
   }
 }
 
-.base-table-scroll-x {
-  .base-table-body-wrapper {
+.base-table__scroll-x {
+  .base-table__body-wrapper {
     overflow-x: auto;
   }
 
-  &.base-table-scroll-position-middle,
-  &.base-table-scroll-position-right {
-    .base-table-fixed-left-is-last {
+  &.base-table__scroll-position-middle,
+  &.base-table__scroll-position-right {
+    .base-table__fixed-left-is-last {
       border-right-color: transparent;
       &::after {
         box-shadow: inset 6px 0 8px -3px #00000026;
@@ -151,27 +151,27 @@
     }
   }
 
-  &.base-table-scroll-position-middle,
-  &.base-table-scroll-position-left {
-    .base-table-fixed-right-is-first::after {
+  &.base-table__scroll-position-middle,
+  &.base-table__scroll-position-left {
+    .base-table__fixed-right-is-first::after {
       box-shadow: inset -6px 0 8px -3px rgba(0, 0, 0, 0.15);
     }
   }
 }
 
-.base-table-scroll-y {
-  .base-table-body-wrapper {
+.base-table__scroll-y {
+  .base-table__body-wrapper {
     overflow-y: auto;
   }
 }
 
-.base-table-gutter {
+.base-table__gutter {
   position: sticky !important;
   right: 0;
   z-index: 20;
 }
 
-.base-table-empty-block {
+.base-table__empty-block {
   min-height: 180px;
   width: 100%;
   display: flex;
@@ -181,7 +181,7 @@
   color: @font-color-3;
 }
 
-.base-table-column-resize-proxy {
+.base-table__column-resize-proxy {
   position: absolute;
   left: 200px;
   top: 0;
@@ -191,19 +191,29 @@
   z-index: 999;
 }
 
-.base-table-tr-drag {
-  .base-table-td {
+.base-table__tr-hover {
+  .base-table__td {
     background-color: @color-fill-1;
   }
 }
 
-.base-table-drag-td {
+.base-table__tr-drag {
+  .base-table__td {
+    background-color: @color-fill-1;
+  }
+}
+
+.base-table__drag-td {
   display: flex;
   align-items: center;
-  .base-table-drag-handler {
+  .base-table__drag-handler {
     cursor: pointer;
     display: flex;
     align-items: center;
     margin-right: 8px;
+    &.base-table__drag-disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
 }

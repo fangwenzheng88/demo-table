@@ -1,6 +1,6 @@
 import Vue from 'vue';
 
-export default function ({ onDrop }) {
+export function useDrag({ onDrop }) {
   const DragStore = Vue.extend({
     data() {
       return {
@@ -70,4 +70,30 @@ export default function ({ onDrop }) {
   });
 
   return new DragStore();
+}
+
+export function useHover() {
+  const HoverStore = Vue.extend({
+    data() {
+      return {
+        activeKey: '',
+      };
+    },
+    methods: {
+      clearDragState() {
+        this.activeKey = '';
+      },
+
+      handleMouseenter(ev, activeKey) {
+        this.activeKey = activeKey;
+      },
+
+      handleMouseleave(ev) {
+        this.clearDragState();
+        ev.preventDefault();
+      },
+    },
+  });
+
+  return new HoverStore();
 }

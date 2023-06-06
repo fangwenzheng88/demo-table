@@ -16,9 +16,9 @@
         <a>{{ record[column.dataIndex] }}</a>
       </template>
       <template #header-tr="{ record }">
-        <tr class="base-table-tr">
-          <td class="base-table-td" :colspan="columns.length">
-            <div class="base-table-cell">{{ record.name }}</div>
+        <tr class="base-table__tr">
+          <td class="base-table__td" :colspan="columns.length">
+            <div class="base-table__cell">{{ record.name }}</div>
           </td>
         </tr>
       </template>
@@ -78,8 +78,8 @@ export default {
     /* renderTr(record, rowIndex) {
       if (rowIndex % 4 === 0) {
         return (
-          <tr class="base-table-tr">
-            <td class="base-table-td" colspan={this.columns.length}>
+          <tr class="base-table__tr">
+            <td class="base-table__td" colspan={this.columns.length}>
               12341234141
             </td>
           </tr>
@@ -90,12 +90,15 @@ export default {
     }, */
     // eslint-disable-next-line no-unused-vars
     spanMethod({ record, rowIndex, column, columnIndex }) {
-      if (rowIndex === 1 && columnIndex === 0) {
+      /* if (rowIndex === 1 && columnIndex === 0) {
         return {
           rowspan: 2,
           colspan: 2,
         };
       }
+      /* if (rowIndex % 4 === 0) {
+        return { colspan: this.columns.length };
+      } */
     },
     renderTr(record, rowIndex) {
       if (rowIndex % 4 === 0) {
@@ -109,13 +112,14 @@ export default {
         return false;
       }
     },
-    allowDropMethod({ rowIndex }) {
-      if (rowIndex === 1) {
+    allowDropMethod({ sourceIndex, targetIndex }) {
+      if (Math.abs(sourceIndex - targetIndex) < 2) {
+        return true;
+      } else {
         return false;
       }
     },
     onDrop(data) {
-      console.log('onDrop', data);
       [this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
     },
     onAdd() {
