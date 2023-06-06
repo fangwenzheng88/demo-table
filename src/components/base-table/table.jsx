@@ -70,18 +70,6 @@ export default {
       isScrollY: false,
     };
   },
-  watch: {
-    isScrollY() {
-      this.$nextTick(() => {
-        this.setColumnsWidth();
-      });
-    },
-    maxHeight() {
-      this.$nextTick(() => {
-        this.setColumnsWidth();
-      });
-    },
-  },
   computed: {
     tableWidth() {
       let tableWidth = this.columnWidths.reduce((total, column) => {
@@ -145,29 +133,19 @@ export default {
   },
   mounted() {
     this.scrollBarWidth = getScrollbarWidth();
-    const windowResize = () => {
-      this.scrollBarWidth = getScrollbarWidth();
-    };
-    window.addEventListener('resize', windowResize);
-    this.$once('hook:beforeDestory', () => {
-      window.removeEventListener('resize', windowResize);
-    });
-    this.$nextTick(() => {
-      this.rootWidth = this.$el.offsetWidth - 1;
-      this.initColumnsWidth();
-      this.listenerRootResize();
-      this.listenerTableBodyResize();
-    });
+    this.initColumnsWidth();
+    this.listenerRootResize();
+    this.listenerTableBodyResize();
   },
   methods: {
     listenerRootResize() {
       const ele = this.$el;
       const resizeObserver = new ResizeObserver(
         debounce((entries) => {
+          this.scrollBarWidth = getScrollbarWidth();
           const width = entries[0].contentRect.width;
           if (this.rootWidth != width) {
             this.rootWidth = width;
-            this.setColumnsWidth();
           }
         })
       );
@@ -217,11 +195,8 @@ export default {
     },
     setColumnsWidth() {
       let width = this.$el.offsetWidth - 1;
-      let el = this.$refs.bodyWrapEl;
-      if (el) {
-        if (el.scrollHeight > el.clientHeight) {
-          width -= this.scrollBarWidth;
-        }
+      if (this.isScrollY) {
+        width -= this.scrollBarWidth;
       }
       let totalWidth = 0;
       let autoWidthColumnTotal = 0;
@@ -262,7 +237,7 @@ export default {
     listenerTableBodyResize() {
       const ele = this.$refs.tableBodyEl;
       const resizeObserver = new ResizeObserver(
-        debounce(() => {
+        debounce(async () => {
           let el = this.$refs.bodyWrapEl;
           if (el) {
             if (el.scrollHeight > el.clientHeight) {
@@ -270,17 +245,16 @@ export default {
             } else {
               this.isScrollY = false;
             }
+            this.setColumnsWidth();
+            if (this.tableWidth - this.rootWidth >= 1) {
+              this.isScrollX = true;
+            } else {
+              this.isScrollX = false;
+            }
 
-            this.$nextTick(() => {
-              if (el.scrollWidth > el.clientWidth) {
-                this.isScrollX = true;
-              } else {
-                this.isScrollX = false;
-              }
-
-              this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
-              this.isScrollToLeft = el.scrollLeft === 0;
-            });
+            await this.$nextTick();
+            this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
+            this.isScrollToLeft = el.scrollLeft === 0;
           }
         })
       );
@@ -315,10 +289,6 @@ export default {
       if (this.draggingColumn) {
         const diff = e.clientX - this.startX;
         this.draggingColumn.width = this.startWidth + diff;
-        console.log(this.draggingColumn, this.draggingColumn.width);
-        this.$nextTick(() => {
-          this.setColumnsWidth();
-        });
       }
       document.removeEventListener('mouseup', this.handleMouseUp);
       document.removeEventListener('mousemove', this.handleMouseMove);
@@ -382,7 +352,7 @@ export default {
       });
     },
     renderTr(record, rowIndex) {
-      const tr = this.customTr(record, rowIndex);
+      const tr = this.customTr({ record, rowIndex });
       if (typeof tr === 'string') {
         return this.$scopedSlots[tr]({ record, rowIndex });
       } else if (tr) {

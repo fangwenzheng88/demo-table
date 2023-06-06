@@ -1,5 +1,4 @@
 import Vue from 'vue';
-
 export function useDrag({ onDrop }) {
   const DragStore = Vue.extend({
     data() {

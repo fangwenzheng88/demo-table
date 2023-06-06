@@ -20,6 +20,7 @@
           <td class="base-table__td" :colspan="columns.length">
             <div class="base-table__cell">{{ record.name }}</div>
           </td>
+          <td></td>
         </tr>
       </template>
     </base-table>
@@ -45,6 +46,7 @@ export default {
           dataIndex: 'name',
           type: 'sort',
           width: 200,
+          fixed: 'left',
         },
         {
           title: 'Salary',
@@ -59,12 +61,10 @@ export default {
         {
           title: 'right',
           dataIndex: 'right',
-          width: 100,
         },
         {
           title: 'Email',
           dataIndex: 'email',
-          width: 300,
         },
       ],
       tableData: [],
@@ -100,7 +100,8 @@ export default {
         return { colspan: this.columns.length };
       } */
     },
-    renderTr(record, rowIndex) {
+    // eslint-disable-next-line no-unused-vars
+    renderTr({ record, rowIndex }) {
       if (rowIndex % 4 === 0) {
         return 'header-tr';
       } else {
