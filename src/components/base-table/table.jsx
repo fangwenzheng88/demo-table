@@ -1,8 +1,14 @@
-import { getScrollbarWidth, debounce } from './utils';
+import { getScrollbarWidth, debounce, hasClass, getStyle, getCell } from './utils';
 import { useDrag, useHover } from './store.js';
+import ElTooltip from 'ccxd-ux/packages/tooltip';
 export default {
   name: 'BaseTable',
   props: {
+    lineClamp: {
+      type: Number,
+      required: false,
+      default: 1,
+    },
     maxHeight: {
       type: String,
       required: false,
@@ -90,6 +96,7 @@ export default {
       expandedKeys: [],
       collapsedKeys: [],
       expandAll: this.defaultExpandAll,
+      tooltipContent: '',
     };
   },
   computed: {
@@ -145,6 +152,9 @@ export default {
       }
       return data;
     },
+  },
+  created() {
+    this.activateTooltip = debounce((tooltip) => tooltip.handleShowPopper());
   },
   mounted() {
     this.scrollBarWidth = getScrollbarWidth();
@@ -678,6 +688,38 @@ export default {
     handleCellClick(ev, data) {
       this.$emit('cell-click', ev, data);
     },
+    handleCellMouseEnter(event) {
+      const cell = getCell(event);
+      // 判断是否text-overflow, 如果是就显示tooltip
+      const cellChild = event.target.querySelector('.base-table__td-content');
+      if (!(hasClass(cellChild, 'base-table__tooltip') && cellChild.childNodes.length)) {
+        return;
+      }
+      // use range width instead of scrollWidth to determine whether the text is overflowing
+      // to address a potential FireFox bug: https://bugzilla.mozilla.org/show_bug.cgi?id=1074543#c3
+      const range = document.createRange();
+      range.setStart(cellChild, 0);
+      range.setEnd(cellChild, cellChild.childNodes.length);
+      const rangeWidth = range.getBoundingClientRect().width;
+      const padding = (parseInt(getStyle(cellChild, 'paddingLeft'), 10) || 0) + (parseInt(getStyle(cellChild, 'paddingRight'), 10) || 0);
+      if ((rangeWidth + padding > cellChild.offsetWidth || cellChild.scrollWidth > cellChild.offsetWidth || cellChild.scrollHeight > cellChild.offsetHeight) && this.$refs.tooltip) {
+        const tooltip = this.$refs.tooltip;
+        // TODO 会引起整个 Table 的重新渲染，需要优化
+        this.tooltipContent = cell.innerText || cell.textContent;
+        tooltip.referenceElm = cell;
+        tooltip.$refs.popper && (tooltip.$refs.popper.style.display = 'none');
+        tooltip.doDestroy();
+        tooltip.setExpectedState(true);
+        this.activateTooltip(tooltip);
+      }
+    },
+    handleCellMouseLeave() {
+      const tooltip = this.$refs.tooltip;
+      if (tooltip) {
+        tooltip.setExpectedState(false);
+        tooltip.handleClosePopper();
+      }
+    },
     renderTd({ record, rowIndex, column, columnIndex, path }) {
       if (column.type === 'sort') {
         return this.renderSortTd({ record, rowIndex, column, columnIndex, path });
@@ -702,6 +744,8 @@ export default {
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
           onClick={(ev) => this.handleCellClick(ev, { record, rowIndex, column, columnIndex })}
+          onMouseenter={this.handleCellMouseEnter}
+          onMouseleave={this.handleCellMouseLeave}
         >
           <div
             class={[
@@ -715,7 +759,9 @@ export default {
           >
             {column.type === 'expand' && path.length > 1 && <div style={`padding-left:${20 * (path.length - 1)}px`}></div>}
             {this.renderExpandIcon({ record, column })}
-            <span class="base-table__td-content">{this.renderCell(record, rowIndex, column, columnIndex)}</span>
+            <span class={['base-table__td-content', { 'base-table__tooltip': column.tooltip }]} style={{ '-webkit-line-clamp': this.lineClamp }}>
+              {this.renderCell(record, rowIndex, column, columnIndex)}
+            </span>
           </div>
         </td>
       );
@@ -826,6 +872,7 @@ export default {
           </table>
           {renderEmptBlock()}
         </div>
+        <ElTooltip effect="light" placement="top" ref="tooltip" content={this.tooltipContent}></ElTooltip>
         <div
           class="base-table__column-resize-proxy"
           style={{

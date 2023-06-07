@@ -1,6 +1,6 @@
 <template>
-  <div class="cell-input" :style="{ height: `${currentHeight}px` }">
-    <textarea rows="1" :style="{ height: `${currentHeight}px` }" class="cell-input-inner" ref="inputEl" size="mini" v-model.trim="newValue" @blur="handleBlur" @input="updateHeight" />
+  <div class="cell-input" :style="{ height: `${height}px` }">
+    <textarea rows="1" :style="{ height: `${height}px` }" class="cell-input-inner" ref="inputEl" size="mini" v-model.trim="newValue" @blur="handleBlur" />
   </div>
 </template>
 
@@ -20,7 +20,6 @@ export default {
   data() {
     return {
       newValue: '',
-      currentHeight: this.height,
     };
   },
   mounted() {
@@ -29,13 +28,6 @@ export default {
     this.$refs.inputEl.focus();
   },
   methods: {
-    updateHeight() {
-      const textarea = this.$refs.inputEl;
-      textarea.style.height = 'auto';
-      this.currentHeight = textarea.scrollHeight;
-      textarea.style.height = `${this.currentHeight}px`;
-      this.$emit('input', this.value); // 将自适应高度 textarea 的值传递给父组件
-    },
     handleBlur() {
       if (this.newValue !== this.value) {
         this.$emit('change', this.newValue);

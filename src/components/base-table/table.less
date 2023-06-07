@@ -93,6 +93,13 @@
   .base-table__td-content {
     display: block;
     width: 100%;
+    &.base-table__tooltip {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+    }
   }
 
   .base-table__td {

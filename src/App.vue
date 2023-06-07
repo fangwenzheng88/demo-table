@@ -1,6 +1,17 @@
 <template>
   <div id="app">
-    <base-table default-expand-all row-key="key" :columns="columns" :data="tableData" :onDrop="onDrop" :allow-drop-method="allowDropMethod" :row-class="rowClass" @cell-click="cellClick"> </base-table>
+    <base-table
+      :line-clamp="2"
+      default-expand-all
+      row-key="key"
+      :columns="columns"
+      :data="tableData"
+      :onDrop="onDrop"
+      :allow-drop-method="allowDropMethod"
+      :row-class="rowClass"
+      @cell-click="cellClick"
+    >
+    </base-table>
   </div>
 </template>
 
@@ -30,26 +41,31 @@ export default {
           dataIndex: 'name',
           width: 200,
           fixed: 'left',
+          tooltip: true,
         },
         {
           title: '数量',
           dataIndex: 'salary',
           width: 400,
+          tooltip: true,
         },
         {
           title: '总价',
           dataIndex: 'address',
           width: 400,
+          tooltip: true,
         },
         {
           title: '单价',
           dataIndex: 'right',
           width: 400,
+          tooltip: true,
         },
         {
           title: 'xxx',
           dataIndex: 'email',
           width: 400,
+          tooltip: true,
         },
       ],
       tableData: [
