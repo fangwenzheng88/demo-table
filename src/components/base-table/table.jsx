@@ -33,6 +33,20 @@ export default {
         return { rowspan: 1, colspan: 1 };
       },
     },
+    rowClass: {
+      type: Function,
+      required: false,
+      default: () => {
+        return {};
+      },
+    },
+    rowStyle: {
+      type: Function,
+      required: false,
+      default: () => {
+        return {};
+      },
+    },
     allowDragMethod: {
       type: Function,
       required: false,
@@ -48,6 +62,11 @@ export default {
       required: false,
       default: () => {},
     },
+    defaultExpandAll: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   data() {
     const dragStore = useDrag({
@@ -57,7 +76,7 @@ export default {
     return {
       dragStore,
       hoverStore,
-      rootWidth: 0,
+      bodyWrapWidth: 0,
       columnWidths: [],
       scrollBarWidth: 15,
       dragPoxy: {
@@ -68,6 +87,9 @@ export default {
       isScrollToLeft: true,
       isScrollX: false,
       isScrollY: false,
+      expandedKeys: [],
+      collapsedKeys: [],
+      expandAll: this.defaultExpandAll,
     };
   },
   computed: {
@@ -79,18 +101,11 @@ export default {
       return tableWidth;
     },
     hasGutter() {
-      if (this.rootWidth - this.tableWidth >= 1) {
+      if (this.bodyWrapWidth - this.tableWidth >= 1) {
         return false;
       } else {
         return true;
       }
-    },
-    sortedData() {
-      const data = [...this.data];
-      if (this.dragStore.dragging && this.dragStore.targetKey) {
-        [data[this.dragStore.sourceIndex], data[this.dragStore.targetIndex]] = [data[this.dragStore.targetIndex], data[this.dragStore.sourceIndex]];
-      }
-      return data;
     },
     tableSpan() {
       const span = {};
@@ -134,18 +149,18 @@ export default {
   mounted() {
     this.scrollBarWidth = getScrollbarWidth();
     this.initColumnsWidth();
-    this.listenerRootResize();
+    this.listenerTableBodyWrapResize();
     this.listenerTableBodyResize();
   },
   methods: {
-    listenerRootResize() {
+    listenerTableBodyWrapResize() {
       const el = this.$refs.bodyWrapEl;
       const resizeObserver = new ResizeObserver(
         debounce(async (entries) => {
           this.scrollBarWidth = getScrollbarWidth();
           const width = entries[0].contentRect.width;
-          if (this.rootWidth != width) {
-            this.rootWidth = width;
+          if (this.bodyWrapWidth != width) {
+            this.bodyWrapWidth = width;
           }
           if (el.scrollHeight > el.clientHeight) {
             this.isScrollY = true;
@@ -153,7 +168,7 @@ export default {
             this.isScrollY = false;
           }
           this.setColumnsWidth();
-          if (this.tableWidth - this.rootWidth >= 1) {
+          if (this.tableWidth - this.bodyWrapWidth >= 1) {
             this.isScrollX = true;
           } else {
             this.isScrollX = false;
@@ -172,11 +187,11 @@ export default {
       });
     },
     initColumnsWidth() {
-      let width = this.$refs.bodyWrapEl.offsetWidth;
       let el = this.$refs.bodyWrapEl;
-      if (el && el.scrollHeight > el.clientHeight) {
-        width -= this.scrollBarWidth;
+      if (!el) {
+        return;
       }
+      let width = el.offsetWidth;
       let totalWidth = 0;
       let autoWidthColumnTotal = 0;
       this.columns.forEach((col) => {
@@ -209,7 +224,11 @@ export default {
       });
     },
     setColumnsWidth() {
-      let width = this.$refs.bodyWrapEl.offsetWidth;
+      let el = this.$refs.bodyWrapEl;
+      if (!el) {
+        return;
+      }
+      let width = el.offsetWidth;
       if (this.isScrollY) {
         width -= this.scrollBarWidth;
       }
@@ -261,7 +280,7 @@ export default {
               this.isScrollY = false;
             }
             this.setColumnsWidth();
-            if (this.tableWidth - this.rootWidth >= 1) {
+            if (this.tableWidth - this.bodyWrapWidth >= 1) {
               this.isScrollX = true;
             } else {
               this.isScrollX = false;
@@ -362,17 +381,62 @@ export default {
       return flag;
     },
     renderTbody() {
-      return this.sortedData.map((record, rowIndex) => {
-        return this.renderTr(record, rowIndex);
+      return this.data.map((record, rowIndex) => {
+        return this.renderTr({ record, rowIndex, path: [] });
       });
     },
-    renderTr(record, rowIndex) {
-      const tr = this.customTr({ record, rowIndex });
+    renderTr({ record, rowIndex, path }) {
+      const tr = this.customTr({ record, rowIndex, path });
       if (typeof tr === 'string') {
         return this.$scopedSlots[tr]({ record, rowIndex });
       } else if (tr) {
         return tr;
       }
+
+      const currentPath = [...path, rowIndex];
+
+      const dragTargetEvent = {
+        onDragenter: (ev) => {
+          const allowDrop =
+            this.allowDropMethod({
+              targetKey: record[this.rowKey],
+              targetIndex: rowIndex,
+              targetPath: currentPath,
+              sourceIndex: this.dragStore.sourceIndex,
+              sourceKey: this.dragStore.sourceKey,
+              sourcePath: this.dragStore.sourcePath,
+            }) ?? true;
+          if (!allowDrop) return;
+          this.dragStore.handleDragEnter(ev, { targetKey: record[this.rowKey], targetIndex: rowIndex, targetPath: currentPath });
+          this.dragStore.proxyPosition = ev.currentTarget.getBoundingClientRect().bottom - this.$el.getBoundingClientRect().top - 2;
+        },
+        onDragover: (ev) => {
+          const allowDrop =
+            this.allowDropMethod({
+              targetKey: record[this.rowKey],
+              targetIndex: rowIndex,
+              targetPath: currentPath,
+              sourceIndex: this.dragStore.sourceIndex,
+              sourceKey: this.dragStore.sourceKey,
+              sourcePath: this.dragStore.sourcePath,
+            }) ?? true;
+          if (!allowDrop) return;
+          this.dragStore.handleDragover(ev);
+        },
+        onDrop: (ev) => {
+          const allowDrop =
+            this.allowDropMethod({
+              targetKey: record[this.rowKey],
+              targetIndex: rowIndex,
+              targetPath: currentPath,
+              sourceIndex: this.dragStore.sourceIndex,
+              sourceKey: this.dragStore.sourceKey,
+              sourcePath: this.dragStore.sourcePath,
+            }) ?? true;
+          if (!allowDrop) return;
+          this.dragStore.handleDrop(ev);
+        },
+      };
 
       const hoverEvent = {
         onMouseenter: (ev) => {
@@ -382,49 +446,46 @@ export default {
           this.hoverStore.handleMouseleave(ev);
         },
       };
-
-      return (
+      const expanded = (this.expandAll && !this.collapsedKeys.includes(record[this.rowKey])) || this.expandedKeys.includes(record[this.rowKey]);
+      return [
         <tr
-          class={['base-table__tr', { 'base-table__tr-hover': this.hoverStore.activeKey === record[this.rowKey], 'base-table__tr-drag': this.dragStore.sourceKey === record[this.rowKey] }]}
+          class={[
+            'base-table__tr',
+            { 'base-table__tr-hover': this.hoverStore.activeKey === record[this.rowKey], 'base-table__tr-drag': this.dragStore.sourceKey === record[this.rowKey] },
+            this.rowClass({ record, rowIndex }),
+          ]}
           onMouseenter={hoverEvent.onMouseenter}
           onMouseleave={hoverEvent.onMouseleave}
+          onDragenter={dragTargetEvent.onDragenter}
+          onDragover={dragTargetEvent.onDragover}
+          onDrop={dragTargetEvent.onDrop}
           key={record[this.rowKey]}
         >
           {this.columns.map((column, columnIndex) => {
-            return this.renderTd(record, rowIndex, column, columnIndex);
+            return this.renderTd({ record, rowIndex, column, columnIndex, path: currentPath });
           })}
-        </tr>
-      );
+        </tr>,
+        expanded ? this.renderChildren({ children: record.children, path: currentPath }) : null,
+      ];
     },
-    renderSortTd(record, rowIndex, column, columnIndex) {
+    renderChildren({ children, path }) {
+      if (Array.isArray(children)) {
+        return children.map((el, i) => {
+          return this.renderTr({ record: el, rowIndex: i, path: path });
+        });
+      }
+    },
+    renderSortTd({ record, rowIndex, column, columnIndex, path }) {
       const allowDrag = this.allowDragMethod({ record, rowIndex }) ?? true;
       const dragSourceEvent = {
         draggable: allowDrag,
         onDragstart: (ev) => {
           if (!allowDrag) return;
-          this.dragStore.handleDragStart(ev, record[this.rowKey], rowIndex, record);
+          this.dragStore.handleDragStart(ev, { sourceKey: record[this.rowKey], sourceIndex: rowIndex, data: record, sourcePath: path });
         },
         onDragend: (ev) => {
           if (!allowDrag) return;
           this.dragStore.handleDragEnd(ev);
-        },
-      };
-
-      const dragTargetEvent = {
-        onDragenter: (ev) => {
-          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
-          if (!allowDrop) return;
-          this.dragStore.handleDragEnter(ev, record[this.rowKey], rowIndex);
-        },
-        onDragover: (ev) => {
-          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
-          if (!allowDrop) return;
-          this.dragStore.handleDragover(ev);
-        },
-        onDrop: (ev) => {
-          const allowDrop = this.allowDropMethod({ targetKey: record[this.rowKey], targetIndex: rowIndex, sourceIndex: this.dragStore.sourceIndex, sourceKey: this.dragStore.sourceKey }) ?? true;
-          if (!allowDrop) return;
-          this.dragStore.handleDrop(ev);
         },
       };
 
@@ -448,11 +509,17 @@ export default {
           ]}
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
-          onDragenter={dragTargetEvent.onDragenter}
-          onDragover={dragTargetEvent.onDragover}
-          onDrop={dragTargetEvent.onDrop}
         >
-          <div class="base-table__drag-td">
+          <div
+            class={[
+              'base-table__drag-td base-table__cell',
+              {
+                'text-left': column.align === 'left',
+                'text-right': column.align === 'right',
+                'text-center': column.align === 'center',
+              },
+            ]}
+          >
             <div
               class={['base-table__drag-handler', { 'base-table__drag-disabled': !dragSourceEvent.draggable }]}
               draggable={dragSourceEvent.draggable}
@@ -475,14 +542,145 @@ export default {
                 <path d="M17 8h2v2h-2V8ZM17 23h2v2h-2v-2ZM17 38h2v2h-2v-2ZM29 8h2v2h-2V8ZM29 23h2v2h-2v-2ZM29 38h2v2h-2v-2Z"></path>
               </svg>
             </div>
-            {this.renderCell(record, rowIndex, column, columnIndex)}
           </div>
         </td>
       );
     },
-    renderTd(record, rowIndex, column, columnIndex) {
+    renderExpandAllIcon({ column }) {
+      if (column.type === 'expand') {
+        const handleAdd = () => {
+          this.expandAll = true;
+          this.collapsedKeys = [];
+        };
+
+        const handleDelete = () => {
+          this.expandAll = false;
+          this.expandedKeys = [];
+        };
+        if (!this.expandAll) {
+          return (
+            <button onClick={handleAdd} type="button" class="base-table__expand-btn">
+              <svg
+                width="1em"
+                height="1em"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                stroke="currentColor"
+                class="arco-icon arco-icon-plus"
+                stroke-width="4"
+                stroke-linecap="butt"
+                stroke-linejoin="miter"
+              >
+                <path d="M5 24h38M24 5v38"></path>
+              </svg>
+            </button>
+          );
+        } else {
+          return (
+            <button onClick={handleDelete} type="button" class="base-table__expand-btn">
+              <svg
+                width="1em"
+                height="1em"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                stroke="currentColor"
+                class="arco-icon arco-icon-minus"
+                stroke-width="4"
+                stroke-linecap="butt"
+                stroke-linejoin="miter"
+              >
+                <path d="M5 24h38"></path>
+              </svg>
+            </button>
+          );
+        }
+      } else {
+        {
+          return null;
+        }
+      }
+    },
+    renderExpandIcon({ record, column }) {
+      if (column.type === 'expand' && Array.isArray(record.children)) {
+        const expanded = (this.expandAll && !this.collapsedKeys.includes(record[this.rowKey])) || this.expandedKeys.includes(record[this.rowKey]);
+        const handleAdd = (ev) => {
+          ev.stopPropagation();
+          const collapseIdx = this.collapsedKeys.indexOf(record[this.rowKey]);
+          if (collapseIdx !== -1) {
+            this.collapsedKeys.splice(collapseIdx, 1);
+          }
+
+          const idx = this.expandedKeys.indexOf(record[this.rowKey]);
+          if (idx === -1) {
+            this.expandedKeys.push(record[this.rowKey]);
+          }
+        };
+
+        const handleDelete = (ev) => {
+          ev.stopPropagation();
+          const collapseIdx = this.collapsedKeys.indexOf(record[this.rowKey]);
+          if (collapseIdx === -1) {
+            this.collapsedKeys.push(record[this.rowKey]);
+          }
+
+          const idx = this.expandedKeys.indexOf(record[this.rowKey]);
+          if (idx !== -1) {
+            this.expandedKeys.splice(idx, 1);
+          }
+        };
+        if (!expanded) {
+          return (
+            <button onClick={handleAdd} type="button" class="base-table__expand-btn">
+              <svg
+                width="1em"
+                height="1em"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                stroke="currentColor"
+                class="arco-icon arco-icon-plus"
+                stroke-width="4"
+                stroke-linecap="butt"
+                stroke-linejoin="miter"
+              >
+                <path d="M5 24h38M24 5v38"></path>
+              </svg>
+            </button>
+          );
+        } else {
+          return (
+            <button onClick={handleDelete} type="button" class="base-table__expand-btn">
+              <svg
+                width="1em"
+                height="1em"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                stroke="currentColor"
+                class="arco-icon arco-icon-minus"
+                stroke-width="4"
+                stroke-linecap="butt"
+                stroke-linejoin="miter"
+              >
+                <path d="M5 24h38"></path>
+              </svg>
+            </button>
+          );
+        }
+      } else {
+        {
+          return null;
+        }
+      }
+    },
+    handleCellClick(ev, data) {
+      this.$emit('cell-click', ev, data);
+    },
+    renderTd({ record, rowIndex, column, columnIndex, path }) {
       if (column.type === 'sort') {
-        return this.renderSortTd(record, rowIndex, column, columnIndex);
+        return this.renderSortTd({ record, rowIndex, column, columnIndex, path });
       }
       const cellId = `${rowIndex}-${columnIndex}`;
       const [rowspan, colspan] = this.tableSpan[cellId] ?? [1, 1];
@@ -503,21 +701,35 @@ export default {
           ]}
           style={this.getFixedStyle(column, columnIndex)}
           key={column.dataIndex}
+          onClick={(ev) => this.handleCellClick(ev, { record, rowIndex, column, columnIndex })}
         >
-          <div class="base-table__cell">{this.renderCell(record, rowIndex, column, columnIndex)}</div>
+          <div
+            class={[
+              'base-table__cell',
+              {
+                'text-left': column.align === 'left',
+                'text-right': column.align === 'right',
+                'text-center': column.align === 'center',
+              },
+            ]}
+          >
+            {column.type === 'expand' && path.length > 1 && <div style={`padding-left:${20 * (path.length - 1)}px`}></div>}
+            {this.renderExpandIcon({ record, column })}
+            <span class="base-table__td-content">{this.renderCell(record, rowIndex, column, columnIndex)}</span>
+          </div>
         </td>
       );
     },
     renderCell(record, rowIndex, column, columnIndex) {
-      if (this.$scopedSlots[column.dataIndex]) {
-        return this.$scopedSlots[column.dataIndex]({
+      if (column.slotName && this.$scopedSlots[column.slotName]) {
+        return this.$scopedSlots[column.slotName]({
           record,
           rowIndex,
           column,
           columnIndex,
         });
       } else {
-        return <span>{record[column.dataIndex]}</span>;
+        return record[column.dataIndex];
       }
     },
   },
@@ -581,7 +793,10 @@ export default {
                       style={this.getFixedStyle(column, index, 'th')}
                       key={column.dataIndex}
                     >
-                      <div class="base-table__cell">{column.title}</div>
+                      <div class="base-table__cell">
+                        {this.renderExpandAllIcon({ column })}
+                        <span class="base-table__th-title">{column.title}</span>
+                      </div>
                       <div class="base-table__resize-handle" onMousedown={(e) => this.handleMouseDown(e, column, index)}></div>
                     </th>
                   );
@@ -616,6 +831,13 @@ export default {
           style={{
             display: this.dragPoxy.visible ? 'block' : 'none',
             left: `${this.dragPoxy.left}px`,
+          }}
+        ></div>
+        <div
+          class="base-table__drag-proxy"
+          style={{
+            display: this.dragStore.dragging ? 'block' : 'none',
+            top: `${this.dragStore.proxyPosition}px`,
           }}
         ></div>
       </div>

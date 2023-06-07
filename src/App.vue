@@ -1,19 +1,12 @@
 <template>
   <div id="app">
-    <base-table max-height="700px" row-key="key" :columns="columns" :data="tableData" :allow-drag-method="allowDragMethod" :allow-drop-method="allowDropMethod" :onDrop="onDrop">
-      <template #name="{ record, column, rowIndex }">
-        <span>{{ rowIndex }}</span>
-        <a>{{ record[column.dataIndex] }}</a>
-      </template>
-    </base-table>
-
-    <button @click="onAdd">添加</button>
-    <button @click="onDelete">减少</button>
+    <base-table default-expand-all row-key="key" :columns="columns" :data="tableData" :onDrop="onDrop" :allow-drop-method="allowDropMethod" :row-class="rowClass" @cell-click="cellClick"> </base-table>
   </div>
 </template>
 
 <script>
 import BaseTable from './components/base-table/index.js';
+import editor from './components/edit';
 
 export default {
   name: 'App',
@@ -27,81 +20,141 @@ export default {
           title: '',
           dataIndex: 'sort',
           type: 'sort',
-          width: 60,
+          width: 40,
           fixed: 'left',
           align: 'center',
         },
         {
-          title: 'Name',
+          title: '名称',
+          type: 'expand',
           dataIndex: 'name',
           width: 200,
           fixed: 'left',
         },
         {
-          title: 'Salary',
+          title: '数量',
           dataIndex: 'salary',
           width: 400,
         },
         {
-          title: 'Address',
+          title: '总价',
           dataIndex: 'address',
           width: 400,
         },
         {
-          title: 'right',
+          title: '单价',
           dataIndex: 'right',
           width: 400,
         },
         {
-          title: 'Email',
+          title: 'xxx',
           dataIndex: 'email',
           width: 400,
         },
       ],
-      tableData: [],
-      key: 0,
-    };
-  },
-  mounted() {
-    this.onAdd();
-  },
-  methods: {
-    allowDragMethod({ rowIndex }) {
-      if (rowIndex === 1) {
-        return false;
-      }
-    },
-    // eslint-disable-next-line no-unused-vars
-    allowDropMethod({ sourceIndex, targetIndex }) {
-      /* if (Math.abs(sourceIndex - targetIndex) < 2) {
-        return true;
-      } else {
-        return false;
-      } */
-    },
-    onDrop(data) {
-      [this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
-    },
-    onAdd() {
-      for (let i = 0; i < 5; i++) {
-        this.key += 1;
-        this.tableData.push({
-          key: this.key,
-          name: 'Jane Doe' + this.key,
+      tableData: [
+        {
+          key: '1', // key唯一不可缺少，字段名称有row-key参数决定
+          name: 'Jane Doe',
           salary: 23000,
           address: '32 Park Road, London',
           email: 'jane.doe@example.com',
+          children: [
+            {
+              key: '1-1',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '1-2',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '1-3',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+          ],
+        },
+        {
+          key: '2',
+          name: 'Jane Doe',
+          salary: 23000,
+          address: '32 Park Road, London',
+          email: 'jane.doe@example.com',
+          children: [
+            {
+              key: '2-1',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '2-2',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '2-3',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+          ],
+        },
+      ],
+    };
+  },
+  methods: {
+    cellClick(ev, data) {
+      console.log('cellClick', ev, data);
+      if (data.column.dataIndex === 'name') {
+        editor.input(ev, data, (newValue, oldValue) => {
+          console.log(newValue, oldValue);
+          data.record[data.column.dataIndex] = newValue;
+        });
+      } else if (data.column.dataIndex === 'salary') {
+        editor.inputNumber(ev, data, (newValue, oldValue) => {
+          console.log(newValue, oldValue);
+          data.record[data.column.dataIndex] = newValue;
         });
       }
     },
-    onDelete() {
-      this.tableData.splice(0, 5);
+    rowClass({ record }) {
+      if (Array.isArray(record.children) && record.children.length > 0) {
+        return {
+          'tr-bg': true,
+        };
+      } else {
+        return {};
+      }
+    },
+    allowDropMethod({ sourcePath, targetPath }) {
+      // 只允许低层级拖拽到高层级中
+      if (sourcePath.length < targetPath.length) {
+        return false;
+      }
+    },
+    onDrop(data) {
+      console.log('onDrop', data);
+      //[this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
     },
   },
 };
 </script>
 
-<style>
+<style lang="less">
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -109,5 +162,11 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+
+.tr-bg {
+  .base-table__td {
+    background-color: rgb(230, 246, 254);
+  }
 }
 </style>

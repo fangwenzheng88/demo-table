@@ -6,21 +6,26 @@ export function useDrag({ onDrop }) {
         dragging: false,
         sourceKey: '',
         sourceIndex: undefined,
+        sourcePath: [],
         targetKey: '',
         targetIndex: undefined,
+        targetPath: [],
         data: {},
+        proxyPosition: 0,
       };
     },
     methods: {
       clearDragState() {
         this.dragging = false;
         this.sourceKey = '';
+        this.sourcePath = [];
+        this.targetPath = [];
         this.targetKey = '';
         this.targetIndex = undefined;
         this.data = {};
       },
 
-      handleDragStart(ev, sourceKey, sourceIndex, data) {
+      handleDragStart(ev, { sourceKey, sourceIndex, data, sourcePath }) {
         if (ev.dataTransfer) {
           ev.dataTransfer.effectAllowed = 'move';
           let el = ev.target;
@@ -33,15 +38,17 @@ export function useDrag({ onDrop }) {
         this.dragging = true;
         this.sourceKey = sourceKey;
         this.sourceIndex = sourceIndex;
+        this.sourcePath = sourcePath;
         this.data = data;
       },
 
-      handleDragEnter(ev, targetKey, targetIndex) {
+      handleDragEnter(ev, { targetKey, targetIndex, targetPath }) {
         if (ev.dataTransfer) {
           ev.dataTransfer.dropEffect = 'move';
         }
         this.targetKey = targetKey;
         this.targetIndex = targetIndex;
+        this.targetPath = targetPath;
         ev.preventDefault();
       },
 
@@ -61,7 +68,15 @@ export function useDrag({ onDrop }) {
       },
 
       handleDrop(ev) {
-        onDrop({ sourceKey: this.sourceKey, sourceIndex: this.sourceIndex, targetKey: this.targetKey, targetIndex: this.targetIndex, data: this.data });
+        onDrop({
+          sourceKey: this.sourceKey,
+          sourceIndex: this.sourceIndex,
+          sourcePath: this.sourcePath,
+          targetKey: this.targetKey,
+          targetIndex: this.targetIndex,
+          targetPath: this.targetPath,
+          data: this.data,
+        });
         this.clearDragState();
         ev.preventDefault();
       },
