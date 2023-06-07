@@ -76,15 +76,23 @@ export function useHover() {
     data() {
       return {
         activeKey: '',
+        data: {},
       };
+    },
+    computed: {
+      isHover() {
+        return !!this.activeKey;
+      },
     },
     methods: {
       clearDragState() {
         this.activeKey = '';
+        this.data = {};
       },
 
-      handleMouseenter(ev, activeKey) {
+      handleMouseenter(ev, activeKey, data) {
         this.activeKey = activeKey;
+        this.data = data;
       },
 
       handleMouseleave(ev) {

@@ -1,27 +1,9 @@
 <template>
   <div id="app">
-    <base-table
-      max-height="700px"
-      row-key="key"
-      :columns="columns"
-      :data="tableData"
-      :custom-tr="renderTr"
-      :span-method="spanMethod"
-      :allow-drag-method="allowDragMethod"
-      :allow-drop-method="allowDropMethod"
-      :onDrop="onDrop"
-    >
+    <base-table max-height="700px" row-key="key" :columns="columns" :data="tableData" :allow-drag-method="allowDragMethod" :allow-drop-method="allowDropMethod" :onDrop="onDrop">
       <template #name="{ record, column, rowIndex }">
         <span>{{ rowIndex }}</span>
         <a>{{ record[column.dataIndex] }}</a>
-      </template>
-      <template #header-tr="{ record }">
-        <tr class="base-table__tr">
-          <td class="base-table__td" :colspan="columns.length">
-            <div class="base-table__cell">{{ record.name }}</div>
-          </td>
-          <td></td>
-        </tr>
       </template>
     </base-table>
 
@@ -42,9 +24,16 @@ export default {
     return {
       columns: [
         {
+          title: '',
+          dataIndex: 'sort',
+          type: 'sort',
+          width: 60,
+          fixed: 'left',
+          align: 'center',
+        },
+        {
           title: 'Name',
           dataIndex: 'name',
-          type: 'sort',
           width: 200,
           fixed: 'left',
         },
@@ -61,10 +50,12 @@ export default {
         {
           title: 'right',
           dataIndex: 'right',
+          width: 400,
         },
         {
           title: 'Email',
           dataIndex: 'email',
+          width: 400,
         },
       ],
       tableData: [],
@@ -75,50 +66,18 @@ export default {
     this.onAdd();
   },
   methods: {
-    /* renderTr(record, rowIndex) {
-      if (rowIndex % 4 === 0) {
-        return (
-          <tr class="base-table__tr">
-            <td class="base-table__td" colspan={this.columns.length}>
-              12341234141
-            </td>
-          </tr>
-        );
-      } else {
-        return null;
-      }
-    }, */
-    // eslint-disable-next-line no-unused-vars
-    spanMethod({ record, rowIndex, column, columnIndex }) {
-      /* if (rowIndex === 1 && columnIndex === 0) {
-        return {
-          rowspan: 2,
-          colspan: 2,
-        };
-      }
-      /* if (rowIndex % 4 === 0) {
-        return { colspan: this.columns.length };
-      } */
-    },
-    // eslint-disable-next-line no-unused-vars
-    renderTr({ record, rowIndex }) {
-      if (rowIndex % 4 === 0) {
-        return 'header-tr';
-      } else {
-        return null;
-      }
-    },
     allowDragMethod({ rowIndex }) {
       if (rowIndex === 1) {
         return false;
       }
     },
+    // eslint-disable-next-line no-unused-vars
     allowDropMethod({ sourceIndex, targetIndex }) {
-      if (Math.abs(sourceIndex - targetIndex) < 2) {
+      /* if (Math.abs(sourceIndex - targetIndex) < 2) {
         return true;
       } else {
         return false;
-      }
+      } */
     },
     onDrop(data) {
       [this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];

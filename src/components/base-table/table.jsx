@@ -79,7 +79,7 @@ export default {
       return tableWidth;
     },
     hasGutter() {
-      if (this.rootWidth - this.tableWidth > this.scrollBarWidth + 1) {
+      if (this.rootWidth - this.tableWidth >= 1) {
         return false;
       } else {
         return true;
@@ -139,25 +139,40 @@ export default {
   },
   methods: {
     listenerRootResize() {
-      const ele = this.$el;
+      const el = this.$refs.bodyWrapEl;
       const resizeObserver = new ResizeObserver(
-        debounce((entries) => {
+        debounce(async (entries) => {
           this.scrollBarWidth = getScrollbarWidth();
           const width = entries[0].contentRect.width;
           if (this.rootWidth != width) {
             this.rootWidth = width;
           }
+          if (el.scrollHeight > el.clientHeight) {
+            this.isScrollY = true;
+          } else {
+            this.isScrollY = false;
+          }
+          this.setColumnsWidth();
+          if (this.tableWidth - this.rootWidth >= 1) {
+            this.isScrollX = true;
+          } else {
+            this.isScrollX = false;
+          }
+
+          await this.$nextTick();
+          this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
+          this.isScrollToLeft = el.scrollLeft === 0;
         })
       );
       // 监听元素
-      resizeObserver.observe(ele);
+      resizeObserver.observe(el);
 
       this.$once('hook:beforeDestory', () => {
-        resizeObserver.unobserve(ele);
+        resizeObserver.unobserve(el);
       });
     },
     initColumnsWidth() {
-      let width = this.$el.offsetWidth - 1;
+      let width = this.$refs.bodyWrapEl.offsetWidth;
       let el = this.$refs.bodyWrapEl;
       if (el && el.scrollHeight > el.clientHeight) {
         width -= this.scrollBarWidth;
@@ -194,7 +209,7 @@ export default {
       });
     },
     setColumnsWidth() {
-      let width = this.$el.offsetWidth - 1;
+      let width = this.$refs.bodyWrapEl.offsetWidth;
       if (this.isScrollY) {
         width -= this.scrollBarWidth;
       }
@@ -361,7 +376,7 @@ export default {
 
       const hoverEvent = {
         onMouseenter: (ev) => {
-          this.hoverStore.handleMouseenter(ev, record[this.rowKey]);
+          this.hoverStore.handleMouseenter(ev, record[this.rowKey], record);
         },
         onMouseleave: (ev) => {
           this.hoverStore.handleMouseleave(ev);
