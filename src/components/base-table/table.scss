@@ -1,16 +1,16 @@
-@primary-color: #409eff;
-@header-color: rgba(242, 242, 242, 1);
-@border-color: rgba(170, 170, 170, 1);
-@color-fill-1: rgb(247, 248, 250);
-@color-fill-2: rgb(242, 243, 245);
-@font-color-1: #333333;
-@font-color-2: #606266;
-@font-color-3: #909399;
-@font-color-4: #c0c4cc;
+$primary-color: #409eff;
+$header-color: rgba(242, 242, 242, 1);
+$border-color: rgba(170, 170, 170, 1);
+$color-fill-1: rgb(247, 248, 250);
+$color-fill-2: rgb(242, 243, 245);
+$font-color-1: #333333;
+$font-color-2: #606266;
+$font-color-3: #909399;
+$font-color-4: #c0c4cc;
 .base-table {
   position: relative;
-  border-top: 1px solid @border-color;
-  border-left: 1px solid @border-color;
+  border-top: 1px solid $border-color;
+  border-left: 1px solid $border-color;
   &::after {
     position: absolute;
     top: 0;
@@ -18,7 +18,7 @@
     z-index: 200;
     width: 1px;
     height: 100%;
-    background-color: @border-color;
+    background-color: $border-color;
     content: '';
   }
 
@@ -29,7 +29,7 @@
     z-index: 200;
     width: 100%;
     height: 1px;
-    background-color: @border-color;
+    background-color: $border-color;
     content: '';
   }
 }
@@ -52,8 +52,8 @@
   .base-table__th {
     position: relative;
     font-weight: bold;
-    background-color: @header-color;
-    color: @font-color-1;
+    background-color: $header-color;
+    color: $font-color-1;
     user-select: none;
     .base-table__resize-handle {
       position: absolute;
@@ -68,8 +68,8 @@
 
   .base-table__th,
   .base-table__td {
-    border-right: 1px solid @border-color;
-    border-bottom: 1px solid @border-color;
+    border-right: 1px solid $border-color;
+    border-bottom: 1px solid $border-color;
     text-align: left;
     word-break: break-all;
   }
@@ -103,7 +103,7 @@
   }
 
   .base-table__td {
-    color: @font-color-1;
+    color: $font-color-1;
     background-color: #fff;
   }
 
@@ -186,7 +186,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  color: @font-color-3;
+  color: $font-color-3;
 }
 
 .base-table__column-resize-proxy {
@@ -195,7 +195,7 @@
   top: 0;
   bottom: 0;
   width: 0;
-  border-left: 1px solid @primary-color;
+  border-left: 1px solid $primary-color;
   z-index: 999;
 }
 
@@ -203,7 +203,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  border-bottom: 2px solid @primary-color;
+  border-bottom: 2px solid $primary-color;
   z-index: 999;
 }
 
@@ -215,7 +215,7 @@
   width: 14px;
   height: 14px;
   padding: 0;
-  color: @font-color-2;
+  color: $font-color-2;
   font-size: 12px;
   line-height: 14px;
   background-color: rgb(229, 230, 235);
@@ -231,13 +231,13 @@
 
 .base-table__tr-hover {
   .base-table__td {
-    background-color: @color-fill-1;
+    background-color: $color-fill-1;
   }
 }
 
 .base-table__tr-drag {
   .base-table__td {
-    background-color: @color-fill-1;
+    background-color: $color-fill-1;
   }
 }
 
