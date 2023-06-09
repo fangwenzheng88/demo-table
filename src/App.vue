@@ -11,6 +11,10 @@
       :row-class="rowClass"
       @cell-click="cellClick"
     >
+      <template #name="{ record, column }">
+        <span>{{ record[column.dataIndex] }}</span>
+        <i style="position: absolute; top: 50%; right: 2px; transform: translateY(-50%)" class="el-icon-edit"></i>
+      </template>
     </base-table>
   </div>
 </template>
@@ -42,12 +46,14 @@ export default {
           width: 200,
           fixed: 'left',
           tooltip: true,
+          slotName: 'name',
         },
         {
           title: '数量',
           dataIndex: 'salary',
           width: 400,
           tooltip: true,
+          slotName: 'name',
         },
         {
           title: '总价',

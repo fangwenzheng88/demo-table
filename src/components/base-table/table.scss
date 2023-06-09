@@ -79,6 +79,7 @@ $font-color-4: #c0c4cc;
     line-height: 23px;
     display: flex;
     align-items: center;
+    position: relative;
     &.text-left {
       justify-content: flex-start;
     }

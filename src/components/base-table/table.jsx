@@ -1,4 +1,4 @@
-import { getScrollbarWidth, debounce, hasClass, getStyle, getCell } from './utils';
+import { getScrollbarWidth, debounce, hasClass, getCell } from './utils';
 import { useDrag, useHover } from './store.js';
 import ElTooltip from 'ccxd-ux/packages/tooltip';
 export default {
@@ -698,14 +698,7 @@ export default {
       if (!(hasClass(cellChild, 'base-table__tooltip') && cellChild.childNodes.length)) {
         return;
       }
-      // use range width instead of scrollWidth to determine whether the text is overflowing
-      // to address a potential FireFox bug: https://bugzilla.mozilla.org/show_bug.cgi?id=1074543#c3
-      const range = document.createRange();
-      range.setStart(cellChild, 0);
-      range.setEnd(cellChild, cellChild.childNodes.length);
-      const rangeWidth = range.getBoundingClientRect().width;
-      const padding = (parseInt(getStyle(cellChild, 'paddingLeft'), 10) || 0) + (parseInt(getStyle(cellChild, 'paddingRight'), 10) || 0);
-      if ((rangeWidth + padding > cellChild.offsetWidth || cellChild.scrollWidth > cellChild.offsetWidth || cellChild.scrollHeight > cellChild.offsetHeight) && this.$refs.tooltip) {
+      if ((cellChild.scrollWidth > cellChild.offsetWidth || cellChild.scrollHeight > cellChild.offsetHeight) && this.$refs.tooltip) {
         const tooltip = this.$refs.tooltip;
         // TODO 会引起整个 Table 的重新渲染，需要优化
         this.tooltipContent = cell.innerText || cell.textContent;
