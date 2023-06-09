@@ -690,6 +690,9 @@ export default {
     },
     handleCellMouseEnter(event) {
       const cell = getCell(event);
+      if (hasClass(cell, 'is-editor')) {
+        return;
+      }
       // 判断是否text-overflow, 如果是就显示tooltip
       const cellChild = event.target.querySelector('.base-table__td-content');
       if (!(hasClass(cellChild, 'base-table__tooltip') && cellChild.childNodes.length)) {

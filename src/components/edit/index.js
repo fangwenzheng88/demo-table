@@ -1,75 +1,100 @@
 import Vue from 'vue';
 import CellInput from './cell-input.vue';
 import CellInputNumber from './cell-input-number.vue';
+import CellTextarea from './cell-textarea.vue';
+import CellSelect from './cell-select.vue';
 export default {
-  input(ev, { record, column }, callback) {
-    const tdEl = ev.currentTarget;
-    if (tdEl.classList.contains('is-editor')) {
-      return;
-    }
-    tdEl.classList.add('is-editor');
-    const cellEl = tdEl.querySelector('.base-table__cell');
-    const div = document.createElement('div');
-    const inner = document.createElement('div');
-    div.appendChild(inner);
-    div.classList.add('base-table__td-content');
-    const contentEl = cellEl.querySelector('.base-table__td-content');
-    const height = contentEl.offsetHeight;
-    const display = contentEl.style.display;
-    contentEl.style.display = 'none';
-    cellEl.appendChild(div);
-    const InputConstructor = Vue.extend(CellInput);
-    const instance = new InputConstructor({
-      propsData: {
-        height,
-        value: record[column.dataIndex],
-      },
-    }).$mount(inner);
-    instance.$on('change', (value) => {
-      if (typeof callback === 'function') {
-        callback(value, record[column.dataIndex]);
-      }
-    });
-    instance.$on('close', () => {
-      instance.$destroy();
-      cellEl.removeChild(div);
-      contentEl.style.display = display;
-      tdEl.classList.remove('is-editor');
-    });
+  input(config) {
+    useEditor(config, 'input');
   },
-  inputNumber(ev, { record, column }, callback) {
+  inputNumber(config) {
+    useEditor(config, 'input-number');
+  },
+  select(config) {
+    useEditor(config, 'select');
+  },
+  textarea(config) {
+    const { event: ev, value, callback } = config;
     const tdEl = ev.currentTarget;
     if (tdEl.classList.contains('is-editor')) {
       return;
     }
     tdEl.classList.add('is-editor');
-    const cellEl = tdEl.querySelector('.base-table__cell');
     const div = document.createElement('div');
     const inner = document.createElement('div');
     div.appendChild(inner);
     div.classList.add('base-table__td-content');
-    const contentEl = cellEl.querySelector('.base-table__td-content');
-    const height = contentEl.offsetHeight;
-    const display = contentEl.style.display;
-    contentEl.style.display = 'none';
-    cellEl.appendChild(div);
-    const InputConstructor = Vue.extend(CellInputNumber);
+    document.body.appendChild(div);
+    const InputConstructor = Vue.extend(CellTextarea);
     const instance = new InputConstructor({
       propsData: {
-        height,
-        value: record[column.dataIndex],
+        value: value,
       },
     }).$mount(inner);
-    instance.$on('change', (value) => {
+    instance.$on('change', (newVlaue) => {
       if (typeof callback === 'function') {
-        callback(value, record[column.dataIndex]);
+        callback(newVlaue, value);
       }
     });
     instance.$on('close', () => {
       instance.$destroy();
-      cellEl.removeChild(div);
-      contentEl.style.display = display;
+      document.body.removeChild(div);
       tdEl.classList.remove('is-editor');
     });
   },
 };
+
+function useEditor(config, componentName) {
+  const { event: ev, value, callback } = config;
+  const tdEl = ev.currentTarget;
+  if (tdEl.classList.contains('is-editor')) {
+    return;
+  }
+  tdEl.classList.add('is-editor');
+  const computedStyle = window.getComputedStyle(tdEl);
+  const position = computedStyle.getPropertyValue('position');
+
+  if (position === 'static') {
+    tdEl.style.position = 'relative';
+  }
+
+  const div = document.createElement('div');
+  div.style.position = 'absolute';
+  div.style.left = '0';
+  div.style.top = '0';
+  div.style.bottom = '0';
+  div.style.right = '0';
+  div.style.zIndex = '10';
+  const inner = document.createElement('div');
+  div.appendChild(inner);
+  tdEl.appendChild(div);
+
+  const Component = {
+    'input': CellInput,
+    'input-number': CellInputNumber,
+    'select': CellSelect,
+  };
+
+  const propsData = {
+    value: value,
+  };
+  if (componentName === 'select') {
+    propsData.options = config.options;
+  }
+
+  const InputConstructor = Vue.extend(Component[componentName]);
+  const instance = new InputConstructor({
+    propsData: propsData,
+  }).$mount(inner);
+  instance.$on('change', (newValue) => {
+    if (typeof callback === 'function') {
+      callback(newValue, value);
+    }
+  });
+  instance.$on('close', () => {
+    instance.$destroy();
+    tdEl.removeChild(div);
+    tdEl.classList.remove('is-editor');
+    tdEl.style.position = position;
+  });
+}

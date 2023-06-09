@@ -1,16 +1,12 @@
 <template>
-  <div class="cell-input" :style="{ height: `${height}px` }">
-    <textarea rows="1" :style="{ height: `${height}px` }" class="cell-input-inner" ref="inputEl" size="mini" v-model.trim="newValue" @blur="handleBlur" />
+  <div class="cell-input">
+    <textarea rows="1" class="cell-input-inner" ref="inputEl" size="mini" v-model.trim="newValue" @blur="handleBlur" />
   </div>
 </template>
 
 <script>
 export default {
   props: {
-    height: {
-      type: Number,
-      required: true,
-    },
     value: {
       type: [String, Number],
       required: false,
@@ -38,15 +34,16 @@ export default {
 };
 </script>
 
-<style>
+<style lang="scss">
 .cell-input {
   width: 100%;
   height: 100%;
-  background-color: transparent;
+  background-color: #fff;
   font-size: inherit;
+  box-shadow: 0 0 24px #0000002e;
   .cell-input-inner {
     margin: 0;
-    padding: 0;
+    padding: 2px 8px;
     font-size: inherit;
     border: none;
     outline: none;
@@ -59,6 +56,7 @@ export default {
     white-space: pre-wrap;
     word-break: break-all;
     font-family: inherit;
+    box-sizing: border-box;
   }
 }
 </style>

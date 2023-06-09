@@ -62,8 +62,8 @@ export default {
           tooltip: true,
         },
         {
-          title: 'xxx',
-          dataIndex: 'email',
+          title: 'select',
+          dataIndex: 'select',
           width: 400,
           tooltip: true,
         },
@@ -75,6 +75,7 @@ export default {
           salary: 23000,
           address: '32 Park Road, London',
           email: 'jane.doe@example.com',
+          select: '选项1',
           children: [
             {
               key: '1-1',
@@ -135,15 +136,65 @@ export default {
   methods: {
     cellClick(ev, data) {
       console.log('cellClick', ev, data);
+      const { record, column } = data;
+      const value = record[column.dataIndex];
       if (data.column.dataIndex === 'name') {
-        editor.input(ev, data, (newValue, oldValue) => {
-          console.log(newValue, oldValue);
-          data.record[data.column.dataIndex] = newValue;
+        editor.input({
+          event: ev,
+          value: value,
+          callback(newValue, oldValue) {
+            console.log(newValue, oldValue);
+            data.record[data.column.dataIndex] = newValue;
+          },
         });
       } else if (data.column.dataIndex === 'salary') {
-        editor.inputNumber(ev, data, (newValue, oldValue) => {
-          console.log(newValue, oldValue);
-          data.record[data.column.dataIndex] = newValue;
+        editor.inputNumber({
+          event: ev,
+          value: value,
+          callback(newValue, oldValue) {
+            console.log(newValue, oldValue);
+            data.record[data.column.dataIndex] = newValue;
+          },
+        });
+      } else if (data.column.dataIndex === 'address') {
+        editor.textarea({
+          event: ev,
+          value: value,
+          callback(newValue, oldValue) {
+            console.log(newValue, oldValue);
+            data.record[data.column.dataIndex] = newValue;
+          },
+        });
+      } else if (data.column.dataIndex === 'select') {
+        editor.select({
+          event: ev,
+          value: value,
+          options: [
+            {
+              value: '选项1',
+              label: '黄金糕',
+            },
+            {
+              value: '选项2',
+              label: '双皮奶',
+            },
+            {
+              value: '选项3',
+              label: '蚵仔煎',
+            },
+            {
+              value: '选项4',
+              label: '龙须面',
+            },
+            {
+              value: '选项5',
+              label: '北京烤鸭',
+            },
+          ],
+          callback(newValue, oldValue) {
+            console.log(newValue, oldValue);
+            data.record[data.column.dataIndex] = newValue;
+          },
         });
       }
     },
