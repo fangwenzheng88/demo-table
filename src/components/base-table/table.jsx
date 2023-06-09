@@ -103,6 +103,7 @@ export default {
       expandAll: this.defaultExpandAll,
       tooltipContent: '',
       headerHeight: 48,
+      scrollLeft: 0,
     };
   },
   computed: {
@@ -168,6 +169,16 @@ export default {
   },
   created() {
     this.activateTooltip = debounce((tooltip) => tooltip.handleShowPopper());
+    this.onScroll = debounce((e) => {
+      const currentTarget = e.target;
+      const scrollLeft = currentTarget.scrollLeft;
+      if (this.scrollLeft != scrollLeft) {
+        this.scrollLeft = scrollLeft;
+        this.$refs.headerWrapEl.scrollLeft = currentTarget.scrollLeft;
+        this.isScrollToRight = currentTarget.scrollLeft >= currentTarget.scrollWidth - currentTarget.offsetWidth;
+        this.isScrollToLeft = currentTarget.scrollLeft === 0;
+      }
+    }, 4);
   },
   mounted() {
     this.scrollBarWidth = getScrollbarWidth();
@@ -275,12 +286,6 @@ export default {
         this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
         this.isScrollToLeft = el.scrollLeft === 0;
       }
-    },
-    onScroll(e) {
-      const currentTarget = e.currentTarget;
-      this.$refs.headerWrapEl.scrollLeft = currentTarget.scrollLeft;
-      this.isScrollToRight = currentTarget.scrollLeft >= currentTarget.scrollWidth - currentTarget.offsetWidth;
-      this.isScrollToLeft = currentTarget.scrollLeft === 0;
     },
     handleMouseDown(e, column, index) {
       this.draggingColumn = this.columnWidths[index];

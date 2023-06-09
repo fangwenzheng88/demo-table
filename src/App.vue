@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <base-table
-      :height="maxHeight"
+      :max-height="maxHeight"
       :line-clamp="2"
       default-expand-all
       row-key="key"
