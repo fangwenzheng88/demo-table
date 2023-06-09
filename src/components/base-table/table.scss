@@ -40,6 +40,7 @@ $font-color-4: #c0c4cc;
 
 .base-table__body-wrapper {
   overflow: hidden;
+  overflow-y: auto;
 }
 
 .base-table__element {
@@ -168,11 +169,11 @@ $font-color-4: #c0c4cc;
   }
 }
 
-.base-table__scroll-y {
+/* .base-table__scroll-y {
   .base-table__body-wrapper {
     overflow-y: auto;
   }
-}
+} */
 
 .base-table__gutter {
   position: sticky !important;
@@ -181,6 +182,7 @@ $font-color-4: #c0c4cc;
 }
 
 .base-table__empty-block {
+  height: 100%;
   min-height: 180px;
   width: 100%;
   display: flex;

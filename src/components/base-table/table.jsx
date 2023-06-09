@@ -1,6 +1,6 @@
 import { getScrollbarWidth, debounce, hasClass, getCell } from './utils';
 import { useDrag, useHover } from './store.js';
-import ElTooltip from 'ccxd-ux/packages/tooltip';
+import { Tooltip as ElTooltip } from 'ccxd-ux';
 export default {
   name: 'BaseTable',
   props: {
@@ -10,7 +10,12 @@ export default {
       default: 1,
     },
     maxHeight: {
-      type: String,
+      type: Number,
+      required: false,
+      default: undefined,
+    },
+    height: {
+      type: Number,
       required: false,
       default: undefined,
     },
@@ -82,7 +87,7 @@ export default {
     return {
       dragStore,
       hoverStore,
-      bodyWrapWidth: 0,
+      tableBodyWrap: 0,
       columnWidths: [],
       scrollBarWidth: 15,
       dragPoxy: {
@@ -97,18 +102,26 @@ export default {
       collapsedKeys: [],
       expandAll: this.defaultExpandAll,
       tooltipContent: '',
+      headerHeight: 48,
     };
   },
   computed: {
+    tableBodyMaxHeight() {
+      if (this.height || this.maxHeight) {
+        return (this.height || this.maxHeight) - this.headerHeight;
+      } else {
+        return undefined;
+      }
+    },
     tableWidth() {
       let tableWidth = this.columnWidths.reduce((total, column) => {
-        total += column.width;
+        total += column.realWidth;
         return total;
       }, 0);
       return tableWidth;
     },
     hasGutter() {
-      if (this.bodyWrapWidth - this.tableWidth >= 1) {
+      if (this.tableBodyWrap - this.tableWidth > this.scrollBarWidth + 1) {
         return false;
       } else {
         return true;
@@ -158,79 +171,31 @@ export default {
   },
   mounted() {
     this.scrollBarWidth = getScrollbarWidth();
-    this.initColumnsWidth();
+    this.listenerTableHeaderResize();
     this.listenerTableBodyWrapResize();
-    this.listenerTableBodyResize();
   },
   methods: {
     listenerTableBodyWrapResize() {
       const el = this.$refs.bodyWrapEl;
-      const resizeObserver = new ResizeObserver(
-        debounce(async (entries) => {
+
+      const fun = () => {
+        console.count('listenerTableBodyWrapResize');
+        const width = el.clientWidth;
+        if (this.tableBodyWrap != width) {
           this.scrollBarWidth = getScrollbarWidth();
-          const width = entries[0].contentRect.width;
-          if (this.bodyWrapWidth != width) {
-            this.bodyWrapWidth = width;
-          }
-          if (el.scrollHeight > el.clientHeight) {
-            this.isScrollY = true;
-          } else {
-            this.isScrollY = false;
-          }
-          this.setColumnsWidth();
-          if (this.tableWidth - this.bodyWrapWidth >= 1) {
-            this.isScrollX = true;
-          } else {
-            this.isScrollX = false;
-          }
+          this.tableBodyWrap = width;
+        }
+        this.updateTableLayout();
+      };
 
-          await this.$nextTick();
-          this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
-          this.isScrollToLeft = el.scrollLeft === 0;
-        })
-      );
+      const resizeObserver = new ResizeObserver(debounce(fun));
       // 监听元素
-      resizeObserver.observe(el);
-
+      this.$nextTick(() => {
+        resizeObserver.observe(el);
+      });
+      fun();
       this.$once('hook:beforeDestory', () => {
         resizeObserver.unobserve(el);
-      });
-    },
-    initColumnsWidth() {
-      let el = this.$refs.bodyWrapEl;
-      if (!el) {
-        return;
-      }
-      let width = el.offsetWidth;
-      let totalWidth = 0;
-      let autoWidthColumnTotal = 0;
-      this.columns.forEach((col) => {
-        if (col.width !== undefined) {
-          totalWidth += col.width;
-        } else {
-          autoWidthColumnTotal += 1;
-        }
-      });
-      this.columnWidths = this.columns.map((col) => {
-        let calcColumnWidth = 0;
-        if (col.width === undefined) {
-          if (totalWidth < width) {
-            calcColumnWidth = Math.max((width - totalWidth) / autoWidthColumnTotal, 80);
-          } else {
-            calcColumnWidth = 80;
-          }
-        } else {
-          calcColumnWidth = col.width;
-        }
-        if (autoWidthColumnTotal === 0 && totalWidth < width) {
-          calcColumnWidth += (calcColumnWidth / totalWidth) * (width - totalWidth);
-        }
-        return {
-          dataIndex: col.dataIndex,
-          originWidth: col.width,
-          width: calcColumnWidth,
-          resized: false,
-        };
       });
     },
     setColumnsWidth() {
@@ -242,71 +207,74 @@ export default {
       if (this.isScrollY) {
         width -= this.scrollBarWidth;
       }
-      let totalWidth = 0;
-      let autoWidthColumnTotal = 0;
-      let autoWdith = 0;
+
+      if (this.columnWidths.length === 0) {
+        this.columnWidths = this.columns.map((col) => {
+          return {
+            dataIndex: col.dataIndex,
+            width: col.width,
+            minWidth: col.minWidth,
+            realWidth: col.width || col.minWidth || 80,
+          };
+        });
+      }
+
+      let minTotalWidth = 0;
+      let autoWidthTotal = 0;
       this.columnWidths.forEach((col) => {
-        if (col.resized !== true) {
-          if (col.originWidth !== undefined) {
-            totalWidth += col.originWidth;
-            autoWdith += col.originWidth;
-          } else {
-            autoWidthColumnTotal += 1;
-          }
-        } else {
-          totalWidth += col.width;
+        minTotalWidth += col.width || col.minWidth || 80;
+        if (col.width === undefined) {
+          autoWidthTotal += col.minWidth || 80;
         }
       });
       this.columnWidths.forEach((col) => {
         let calcColumnWidth = 0;
-        if (!col.resized) {
-          if (col.originWidth === undefined) {
-            if (totalWidth < width) {
-              calcColumnWidth = Math.max((width - totalWidth) / autoWidthColumnTotal, 80);
-            } else {
-              calcColumnWidth = 80;
-            }
-          } else {
-            calcColumnWidth = col.originWidth;
-          }
-          if (autoWidthColumnTotal === 0 && totalWidth < width) {
-            calcColumnWidth += (calcColumnWidth / autoWdith) * (width - totalWidth);
-          }
-        } else {
+        if (col.width !== undefined) {
           calcColumnWidth = col.width;
+        } else {
+          calcColumnWidth = col.minWidth || 80;
+          if (width > minTotalWidth) {
+            calcColumnWidth += (calcColumnWidth / autoWidthTotal) * (width - minTotalWidth);
+          }
         }
-        col.width = calcColumnWidth;
+        col.realWidth = calcColumnWidth;
       });
     },
-    listenerTableBodyResize() {
-      const ele = this.$refs.tableBodyEl;
-      const resizeObserver = new ResizeObserver(
-        debounce(async () => {
-          let el = this.$refs.bodyWrapEl;
-          if (el) {
-            if (el.scrollHeight > el.clientHeight) {
-              this.isScrollY = true;
-            } else {
-              this.isScrollY = false;
-            }
-            this.setColumnsWidth();
-            if (this.tableWidth - this.bodyWrapWidth >= 1) {
-              this.isScrollX = true;
-            } else {
-              this.isScrollX = false;
-            }
-
-            await this.$nextTick();
-            this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
-            this.isScrollToLeft = el.scrollLeft === 0;
-          }
-        })
-      );
+    listenerTableHeaderResize() {
+      const ele = this.$refs.headerWrapEl;
+      const fun = () => {
+        const height = ele.offsetHeight;
+        if (height != this.headerHeight) {
+          this.headerHeight = height;
+        }
+      };
+      const resizeObserver = new ResizeObserver(debounce(fun));
       // 监听元素
       resizeObserver.observe(ele);
+      fun();
       this.$once('hook:beforeDestory', () => {
         resizeObserver.unobserve(ele);
       });
+    },
+    async updateTableLayout() {
+      let el = this.$refs.bodyWrapEl;
+      if (el) {
+        if (el.scrollHeight > el.offsetHeight) {
+          this.isScrollY = true;
+        } else {
+          this.isScrollY = false;
+        }
+        this.setColumnsWidth();
+        if (this.tableWidth - this.tableBodyWrap >= 1) {
+          this.isScrollX = true;
+        } else {
+          this.isScrollX = false;
+        }
+
+        await this.$nextTick();
+        this.isScrollToRight = el.scrollLeft >= el.scrollWidth - el.offsetWidth;
+        this.isScrollToLeft = el.scrollLeft === 0;
+      }
     },
     onScroll(e) {
       const currentTarget = e.currentTarget;
@@ -317,8 +285,7 @@ export default {
     handleMouseDown(e, column, index) {
       this.draggingColumn = this.columnWidths[index];
       this.startX = e.clientX;
-      this.startWidth = this.draggingColumn.width;
-      this.draggingColumn.resized = true;
+      this.startWidth = this.draggingColumn.realWidth;
       document.addEventListener('mouseup', this.handleMouseUp);
       document.addEventListener('mousemove', this.handleMouseMove);
       this.handleMouseMove(e);
@@ -340,17 +307,18 @@ export default {
       this.draggingColumn = null;
       this.startX = 0;
       this.startWidth = 0;
+      this.updateTableLayout();
     },
     getFixedStyle(column, index, type) {
       if (column.fixed === 'left') {
         const left = this.columnWidths.slice(0, index).reduce((total, column) => {
-          total += column.width;
+          total += column.realWidth;
           return total;
         }, 0);
         return { left: `${left}px` };
       } else if (column.fixed === 'right') {
         let right = this.columnWidths.slice(index + 1, this.columnWidths.length).reduce((total, column) => {
-          total += column.width;
+          total += column.realWidth;
           return total;
         }, 0);
         if (this.isScrollY && type === 'th') {
@@ -795,29 +763,32 @@ export default {
             'base-table__scroll-position-middle': !this.isScrollToLeft && !this.isScrollToRight,
           },
         ]}
+        style={{ maxHeight: this.maxHeight ? `${this.maxHeight}px` : 'unset', height: this.height ? `${this.height}px` : 'unset' }}
       >
         <div class="base-table__header-wrapper" ref="headerWrapEl">
-          <table class="base-table__element" cellpadding="0" cellspacing="0" style={{ width: `${this.tableWidth}px` }}>
+          <table class="base-table__element" cellpadding="0" cellspacing="0" style={{ width: this.tableWidth ? `${this.tableWidth}px` : '100%' }}>
             <colgroup>
               {this.columnWidths.map((column) => {
                 return (
                   <col
                     key={column.dataIndex}
                     style={{
-                      minWidth: `${column.width}px`,
-                      width: `${column.width}px`,
-                      maxWidth: `${column.width}px`,
+                      minWidth: `${column.realWidth}px`,
+                      width: `${column.realWidth}px`,
+                      maxWidth: `${column.realWidth}px`,
                     }}
                   />
                 );
               })}
-              <col
-                style={{
-                  minWidth: `${this.scrollBarWidth}px`,
-                  width: `${this.scrollBarWidth}px`,
-                  maxWidth: `${this.scrollBarWidth}px`,
-                }}
-              ></col>
+              {this.columnWidths.length > 0 && (
+                <col
+                  style={{
+                    minWidth: `${this.scrollBarWidth}px`,
+                    width: `${this.scrollBarWidth}px`,
+                    maxWidth: `${this.scrollBarWidth}px`,
+                  }}
+                ></col>
+              )}
             </colgroup>
             <thead>
               <tr class="base-table__tr">
@@ -848,7 +819,7 @@ export default {
             </thead>
           </table>
         </div>
-        <div ref="bodyWrapEl" class="base-table__body-wrapper" style={{ maxHeight: this.maxHeight ? this.maxHeight : 'unset' }} onScroll={this.onScroll}>
+        <div ref="bodyWrapEl" class="base-table__body-wrapper" onScroll={this.onScroll} style={{ height: this.tableBodyMaxHeight ? `${this.tableBodyMaxHeight}px` : 'unset' }}>
           <table ref="tableBodyEl" class="base-table__element base-table__body" cellpadding="0" cellspacing="0" style={{ width: this.tableWidth ? `${this.tableWidth}px` : '100%' }}>
             <colgroup>
               {this.columnWidths.map((column) => {
@@ -856,9 +827,9 @@ export default {
                   <col
                     key={column.dataIndex}
                     style={{
-                      minWidth: `${column.width}px`,
-                      width: `${column.width}px`,
-                      maxWidth: `${column.width}px`,
+                      minWidth: `${column.realWidth}px`,
+                      width: `${column.realWidth}px`,
+                      maxWidth: `${column.realWidth}px`,
                     }}
                   />
                 );

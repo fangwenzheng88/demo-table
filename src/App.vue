@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <base-table
+      :height="maxHeight"
       :line-clamp="2"
       default-expand-all
       row-key="key"
@@ -16,6 +17,8 @@
         <i style="position: absolute; top: 50%; right: 2px; transform: translateY(-50%)" class="el-icon-edit"></i>
       </template>
     </base-table>
+
+    <button @click="onAdd">onAdd</button>
   </div>
 </template>
 
@@ -30,6 +33,7 @@ export default {
   },
   data() {
     return {
+      maxHeight: 500,
       columns: [
         {
           title: '',
@@ -43,100 +47,37 @@ export default {
           title: '名称',
           type: 'expand',
           dataIndex: 'name',
-          width: 200,
-          fixed: 'left',
+          minWidth: 300,
           tooltip: true,
           slotName: 'name',
         },
         {
           title: '数量',
           dataIndex: 'salary',
-          width: 400,
           tooltip: true,
+          minWidth: 300,
           slotName: 'name',
         },
         {
           title: '总价',
           dataIndex: 'address',
-          width: 400,
+          minWidth: 300,
           tooltip: true,
         },
         {
           title: '单价',
           dataIndex: 'right',
-          width: 400,
           tooltip: true,
+          minWidth: 300,
         },
         {
           title: 'select',
           dataIndex: 'select',
-          width: 400,
+          minWidth: 300,
           tooltip: true,
         },
       ],
-      tableData: [
-        {
-          key: '1', // key唯一不可缺少，字段名称有row-key参数决定
-          name: 'Jane Doe',
-          salary: 23000,
-          address: '32 Park Road, London',
-          email: 'jane.doe@example.com',
-          select: '选项1',
-          children: [
-            {
-              key: '1-1',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '1-2',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '1-3',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-          ],
-        },
-        {
-          key: '2',
-          name: 'Jane Doe',
-          salary: 23000,
-          address: '32 Park Road, London',
-          email: 'jane.doe@example.com',
-          children: [
-            {
-              key: '2-1',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '2-2',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '2-3',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-          ],
-        },
-      ],
+      tableData: [],
     };
   },
   methods: {
@@ -222,6 +163,71 @@ export default {
     onDrop(data) {
       console.log('onDrop', data);
       //[this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
+    },
+    onAdd() {
+      this.tableData.push(
+        {
+          key: '11', // key唯一不可缺少，字段名称有row-key参数决定
+          name: 'Jane Doe',
+          salary: 23000,
+          address: '32 Park Road, London',
+          email: 'jane.doe@example.com',
+          select: '选项1',
+          children: [
+            {
+              key: '11-1',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '11-2',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '11-3',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+          ],
+        },
+        {
+          key: '12',
+          name: 'Jane Doe',
+          salary: 23000,
+          address: '32 Park Road, London',
+          email: 'jane.doe@example.com',
+          children: [
+            {
+              key: '12-1',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '12-2',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+            {
+              key: '12-3',
+              name: 'Jane Doe',
+              salary: 23000,
+              address: '32 Park Road, London',
+              email: 'jane.doe@example.com',
+            },
+          ],
+        }
+      );
     },
   },
 };
