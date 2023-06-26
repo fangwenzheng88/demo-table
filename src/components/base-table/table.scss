@@ -257,3 +257,9 @@ $font-color-4: #c0c4cc;
     }
   }
 }
+
+.base-table__tooltip{
+  max-height: 50vh;
+  max-width: 90vw;
+  overflow: hidden;
+}

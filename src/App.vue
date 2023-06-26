@@ -33,7 +33,7 @@ export default {
   },
   data() {
     return {
-      maxHeight: 500,
+      maxHeight: 600,
       columns: [
         {
           title: '',

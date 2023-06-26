@@ -824,7 +824,7 @@ export default {
             </thead>
           </table>
         </div>
-        <div ref="bodyWrapEl" class="base-table__body-wrapper" onScroll={this.onScroll} style={{ height: this.tableBodyMaxHeight ? `${this.tableBodyMaxHeight}px` : 'unset' }}>
+        <div ref="bodyWrapEl" class="base-table__body-wrapper" onScroll={this.onScroll} style={{ maxHeight: this.tableBodyMaxHeight ? `${this.tableBodyMaxHeight}px` : 'unset' }}>
           <table ref="tableBodyEl" class="base-table__element base-table__body" cellpadding="0" cellspacing="0" style={{ width: this.tableWidth ? `${this.tableWidth}px` : '100%' }}>
             <colgroup>
               {this.columnWidths.map((column) => {
@@ -844,7 +844,7 @@ export default {
           </table>
           {renderEmptBlock()}
         </div>
-        <ElTooltip effect="light" placement="top" ref="tooltip" content={this.tooltipContent}></ElTooltip>
+        <ElTooltip effect="light" placement="top" ref="tooltip" popper-class="base-table__tooltip" content={this.tooltipContent}></ElTooltip>
         <div
           class="base-table__column-resize-proxy"
           style={{

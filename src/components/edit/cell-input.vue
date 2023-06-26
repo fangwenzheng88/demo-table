@@ -41,6 +41,7 @@ export default {
   background-color: #fff;
   font-size: inherit;
   box-shadow: 0 0 24px #0000002e;
+  overflow: hidden;
   .cell-input-inner {
     margin: 0;
     padding: 2px 8px;
