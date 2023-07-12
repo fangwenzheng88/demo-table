@@ -87,10 +87,13 @@ export function useDrag({ onDrop }) {
 }
 
 export function useHover() {
+  let timeout = null;
   const HoverStore = Vue.extend({
     data() {
       return {
         activeKey: '',
+        proxyPosition: 0,
+        targetPath: [],
         data: {},
       };
     },
@@ -105,14 +108,27 @@ export function useHover() {
         this.data = {};
       },
 
-      handleMouseenter(ev, activeKey, data) {
+      handleMouseenter(ev, activeKey, data, targetPath) {
+        clearTimeout(timeout);
         this.activeKey = activeKey;
         this.data = data;
+        this.targetPath = targetPath;
       },
 
       handleMouseleave(ev) {
-        this.clearDragState();
         ev.preventDefault();
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          this.clearDragState();
+        }, 500);
+      },
+
+      handleProxyMouseenter() {
+        clearTimeout(timeout);
+      },
+
+      handleProxyMouseleave() {
+        this.clearDragState();
       },
     },
   });

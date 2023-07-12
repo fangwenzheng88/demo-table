@@ -1,7 +1,6 @@
 <template>
   <div id="app">
     <base-table
-      :max-height="maxHeight"
       :line-clamp="2"
       default-expand-all
       row-key="key"
@@ -10,11 +9,27 @@
       :onDrop="onDrop"
       :allow-drop-method="allowDropMethod"
       :row-class="rowClass"
+      :spanMethod="spanMethod"
       @cell-click="cellClick"
+      @add="handleAdd"
+      @delete="handleDelete"
+      @checkedAll="handleCheckedAll"
+      :checkedKeys="checkedKeys"
+      :custom-tr="renderTr"
     >
       <template #name="{ record, column }">
         <span>{{ record[column.dataIndex] }}</span>
         <i style="position: absolute; top: 50%; right: 2px; transform: translateY(-50%)" class="el-icon-edit"></i>
+      </template>
+      <template #header-tr="{ record }">
+        <tr class="base-table__tr">
+          <td class="base-table__td" :colspan="columns.length">
+            <div class="base-table__cell">
+              <el-tag size="mini">SS1</el-tag>
+              <span>{{ record.name }}</span>
+            </div>
+          </td>
+        </tr>
       </template>
     </base-table>
 
@@ -33,15 +48,14 @@ export default {
   },
   data() {
     return {
-      maxHeight: 600,
       columns: [
         {
-          title: '',
+          title: '序号',
           dataIndex: 'sort',
           type: 'sort',
-          width: 40,
+          width: 100,
           fixed: 'left',
-          align: 'center',
+          align: 'left',
         },
         {
           title: '名称',
@@ -49,7 +63,6 @@ export default {
           dataIndex: 'name',
           minWidth: 300,
           tooltip: true,
-          slotName: 'name',
         },
         {
           title: '数量',
@@ -78,9 +91,34 @@ export default {
         },
       ],
       tableData: [],
+      checkedKeys: [],
     };
   },
+  mounted() {
+    this.onAdd();
+  },
   methods: {
+    renderTr({ path }) {
+      if (path.length === 1) {
+        return 'header-tr';
+      } else {
+        return null;
+      }
+    },
+    handleAdd(data) {
+      console.log('handleAdd', data);
+    },
+    handleDelete(data) {
+      console.log('handleDelete', data);
+    },
+    handleCheckedAll(checkedAll) {
+      if (checkedAll) {
+        // 这里实现选择全部的功能
+        this.checkedKeys.push('11-1-1');
+      } else {
+        this.checkedKeys = [];
+      }
+    },
     cellClick(ev, data) {
       console.log('cellClick', ev, data);
       const { record, column } = data;
@@ -145,14 +183,15 @@ export default {
         });
       }
     },
-    rowClass({ record }) {
-      if (Array.isArray(record.children) && record.children.length > 0) {
-        return {
-          'tr-bg': true,
-        };
-      } else {
-        return {};
+    rowClass({ path }) {
+      const level = path.length;
+      return `tr-bg-${level}`;
+    },
+    spanMethod({ path, column }) {
+      if (path.length === 2 && column.dataIndex === 'name') {
+        return { rowspan: 1, colspan: this.columns.length - 1 };
       }
+      return { rowspan: 1, colspan: 1 };
     },
     allowDropMethod({ sourcePath, targetPath }) {
       // 只允许低层级拖拽到高层级中
@@ -165,69 +204,106 @@ export default {
       //[this.tableData[data.sourceIndex], this.tableData[data.targetIndex]] = [this.tableData[data.targetIndex], this.tableData[data.sourceIndex]];
     },
     onAdd() {
-      this.tableData.push(
-        {
-          key: '11', // key唯一不可缺少，字段名称有row-key参数决定
-          name: 'Jane Doe',
-          salary: 23000,
-          address: '32 Park Road, London',
-          email: 'jane.doe@example.com',
-          select: '选项1',
-          children: [
-            {
-              key: '11-1',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '11-2',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '11-3',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-          ],
-        },
-        {
-          key: '12',
-          name: 'Jane Doe',
-          salary: 23000,
-          address: '32 Park Road, London',
-          email: 'jane.doe@example.com',
-          children: [
-            {
-              key: '12-1',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '12-2',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-            {
-              key: '12-3',
-              name: 'Jane Doe',
-              salary: 23000,
-              address: '32 Park Road, London',
-              email: 'jane.doe@example.com',
-            },
-          ],
-        }
-      );
+      this.tableData.push({
+        key: '11', // key唯一不可缺少，字段名称有row-key参数决定
+        name: 'Jane Doe',
+        salary: 23000,
+        address: '32 Park Road, London',
+        email: 'jane.doe@example.com',
+        select: '选项1',
+        children: [
+          {
+            key: '11-1',
+            name: 'Jane Doe',
+            salary: 23000,
+            address: '32 Park Road, London',
+            email: 'jane.doe@example.com',
+            children: [
+              {
+                key: '11-1-1',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-1-2',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-1-3',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+            ],
+          },
+          {
+            key: '11-2',
+            name: 'Jane Doe',
+            salary: 23000,
+            address: '32 Park Road, London',
+            email: 'jane.doe@example.com',
+            children: [
+              {
+                key: '11-2-1',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-2-2',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-2-3',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+            ],
+          },
+          {
+            key: '11-3',
+            name: 'Jane Doe',
+            salary: 23000,
+            address: '32 Park Road, London',
+            email: 'jane.doe@example.com',
+            children: [
+              {
+                key: '11-3-1',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-3-2',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+              {
+                key: '11-3-3',
+                name: 'Jane Doe',
+                salary: 23000,
+                address: '32 Park Road, London',
+                email: 'jane.doe@example.com',
+              },
+            ],
+          },
+        ],
+      });
     },
   },
 };
@@ -241,9 +317,15 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+  padding: 20px;
 }
 
-.tr-bg {
+.tr-bg-1 {
+  .base-table__td {
+    background-color: #fff;
+  }
+}
+.tr-bg-2 {
   .base-table__td {
     background-color: rgb(230, 246, 254);
   }
